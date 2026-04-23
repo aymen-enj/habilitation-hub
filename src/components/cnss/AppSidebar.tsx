@@ -1,0 +1,85 @@
+import { NavLink } from "@/components/NavLink";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { LayoutDashboard, Users, FilePlus2, ClipboardCheck, ScrollText } from "lucide-react";
+import type { Role } from "@/mocks/types";
+import { canAccess, type RouteKey } from "@/lib/access";
+import { CnssLogo } from "./CnssLogo";
+import { cn } from "@/lib/utils";
+
+interface NavItem {
+  key: RouteKey;
+  title: string;
+  url: string;
+  icon: typeof LayoutDashboard;
+}
+
+const NAV: NavItem[] = [
+  { key: "dashboard", title: "Tableau de bord", url: "/", icon: LayoutDashboard },
+  { key: "agents", title: "Agents", url: "/agents", icon: Users },
+  { key: "requests", title: "Demandes d'accès", url: "/access-requests", icon: FilePlus2 },
+  { key: "validation", title: "File de validation", url: "/validation", icon: ClipboardCheck },
+  { key: "audit", title: "Journal d'audit", url: "/audit", icon: ScrollText },
+];
+
+export function AppSidebar({ role }: { role: Role }) {
+  const { state } = useSidebar();
+  const collapsed = state === "collapsed";
+
+  const visible = NAV.filter((n) => canAccess(n.key, role));
+
+  return (
+    <Sidebar collapsible="icon" className="border-r-0">
+      <SidebarHeader className="px-4 py-5">
+        <div className={cn("flex items-center", collapsed && "justify-center")}>
+          {collapsed ? (
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cnss-accent text-cnss-primary-dark">
+              <span className="text-xs font-bold">CN</span>
+            </div>
+          ) : (
+            <CnssLogo variant="light" />
+          )}
+        </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          {!collapsed && (
+            <SidebarGroupLabel className="text-sidebar-foreground/60">Navigation</SidebarGroupLabel>
+          )}
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {visible.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <SidebarMenuItem key={item.key}>
+                    <SidebarMenuButton asChild tooltip={item.title}>
+                      <NavLink
+                        to={item.url}
+                        end={item.url === "/"}
+                        className="text-sidebar-foreground/85 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                        activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
+                      >
+                        <Icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
+}
