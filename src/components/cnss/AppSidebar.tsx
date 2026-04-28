@@ -40,14 +40,16 @@ export function AppSidebar({ role }: { role: Role }) {
 
   return (
     <Sidebar collapsible="icon" className="border-r-0">
-      <SidebarHeader className="px-4 py-5">
+      <SidebarHeader className="bg-white px-4 py-5">
         <div className={cn("flex items-center", collapsed && "justify-center")}>
           {collapsed ? (
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-cnss-accent text-cnss-primary-dark">
-              <span className="text-xs font-bold">CN</span>
-            </div>
+            <img
+              src="/CNSS-logo.png"
+              alt="Logo CNSS"
+              className="h-10 w-auto object-contain"
+            />
           ) : (
-            <CnssLogo variant="light" />
+            <CnssLogo variant="dark" />
           )}
         </div>
       </SidebarHeader>

@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/cnss/EmptyState";
 import { formatDateTime } from "@/lib/format";
-import { Search, FilePlus2, CheckCircle2, XCircle, LogIn, LogOut } from "lucide-react";
+import { Search, FilePlus2, CheckCircle2, XCircle, LogIn, LogOut, Building2, ShieldOff } from "lucide-react";
 import type { AuditEventType } from "@/mocks/types";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +16,8 @@ const EVENT_LABEL: Record<AuditEventType, string> = {
   REQUEST_REJECTED: "Rejet",
   LOGIN: "Connexion",
   LOGOUT: "Déconnexion",
+  AGENCY_CHANGED: "Changement d'agence",
+  RIGHT_CLOSED: "Fermeture de droit",
 };
 
 const EVENT_STYLE: Record<AuditEventType, { wrap: string; icon: typeof FilePlus2 }> = {
@@ -24,6 +26,8 @@ const EVENT_STYLE: Record<AuditEventType, { wrap: string; icon: typeof FilePlus2
   REQUEST_REJECTED: { wrap: "bg-danger-soft text-danger border-danger/20", icon: XCircle },
   LOGIN: { wrap: "bg-muted text-muted-foreground border-border", icon: LogIn },
   LOGOUT: { wrap: "bg-muted text-muted-foreground border-border", icon: LogOut },
+  AGENCY_CHANGED: { wrap: "bg-cnss-accent-soft text-cnss-primary border-cnss-accent/30", icon: Building2 },
+  RIGHT_CLOSED: { wrap: "bg-warning-soft text-warning border-warning/20", icon: ShieldOff },
 };
 
 export default function Audit() {

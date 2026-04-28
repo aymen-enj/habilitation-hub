@@ -54,7 +54,13 @@ export default function Login() {
           }}
         />
         <div className="relative">
-          <CnssLogo variant="light" />
+          <div className="inline-flex rounded-lg bg-white p-3">
+            <img
+              src="/CNSS-logo.png"
+              alt="Logo CNSS"
+              className="h-16 w-auto object-contain"
+            />
+          </div>
         </div>
         <div className="relative max-w-md space-y-6">
           <h2 className="text-3xl font-semibold leading-tight">

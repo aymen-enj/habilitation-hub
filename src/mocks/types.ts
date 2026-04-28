@@ -2,6 +2,16 @@ export type Role = "ADMIN" | "MANAGER" | "VALIDATOR" | "AUDIT_VIEWER";
 
 export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
 
+export type BatchStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "PARTIAL";
+
+export type RequestOperation = "ADD" | "REMOVE";
+
+export type AgencyChangeOperation =
+  | "FIRST_ASSIGNMENT"
+  | "STOP_CURRENT_RIGHTS"
+  | "CHANGE_STOP_RIGHTS"
+  | "CHANGE_TRANSFER_RIGHTS";
+
 export type AgentStatus = "ACTIF" | "INACTIF" | "SUSPENDU";
 
 export interface User {
@@ -59,6 +69,8 @@ export interface AccessRequest {
   id: string;
   createdAt: string;
   requesterId: string;
+  operation: RequestOperation; // ADD ou REMOVE
+  batchId?: string; // ID du lot si fait partie d'un lot
   beneficiaryId: string;
   applicationId: string;
   profileId: string;
@@ -72,12 +84,32 @@ export interface AccessRequest {
   decidedById?: string;
 }
 
+export interface BatchRequest {
+  id: string;
+  createdAt: string;
+  requesterId: string;
+  operation: RequestOperation;
+  fileName: string;
+  status: BatchStatus;
+  requests: AccessRequest[]; // Les demandes individuelles du lot
+  totalApproved?: number;
+  totalRejected?: number;
+  decidedAt?: string;
+  decidedById?: string;
+}
+
 export type AuditEventType =
   | "REQUEST_CREATED"
   | "REQUEST_APPROVED"
   | "REQUEST_REJECTED"
+  | "BATCH_CREATED"
+  | "BATCH_APPROVED"
+  | "BATCH_REJECTED"
+  | "BATCH_PARTIAL"
   | "LOGIN"
-  | "LOGOUT";
+  | "LOGOUT"
+  | "AGENCY_CHANGED"
+  | "RIGHT_CLOSED";
 
 export interface AuditEvent {
   id: string;

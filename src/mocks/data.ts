@@ -182,28 +182,28 @@ export const agents: Agent[] = [
 
 export const accessRequests: AccessRequest[] = [
   {
-    id: "req-001", createdAt: daysAgo(1), requesterId: "u-mgr", beneficiaryId: "ag-001",
+    id: "req-001", createdAt: daysAgo(1), requesterId: "u-mgr", operation: "ADD", beneficiaryId: "ag-001",
     applicationId: "app-paie", profileId: "pr-paie-gest", moduleId: "m-paie-gest-1",
     startDate: daysAhead(2), endDate: daysAhead(180),
     justification: "Renfort équipe paie pour la clôture trimestrielle.",
     status: "PENDING",
   },
   {
-    id: "req-002", createdAt: daysAgo(2), requesterId: "u-mgr", beneficiaryId: "ag-009",
+    id: "req-002", createdAt: daysAgo(2), requesterId: "u-mgr", operation: "ADD", beneficiaryId: "ag-009",
     applicationId: "app-rh", profileId: "pr-rh-gest", moduleId: "m-rh-gest-1",
     startDate: daysAhead(1), endDate: daysAhead(120),
     justification: "Prise en charge dossiers absences délégation Fès.",
     status: "PENDING",
   },
   {
-    id: "req-003", createdAt: daysAgo(3), requesterId: "u-mgr", beneficiaryId: "ag-013",
+    id: "req-003", createdAt: daysAgo(3), requesterId: "u-mgr", operation: "ADD", beneficiaryId: "ag-013",
     applicationId: "app-bud", profileId: "pr-bud-gest", moduleId: "m-bud-gest-1",
     startDate: daysAhead(5), endDate: daysAhead(200),
     justification: "Suivi des engagements budgétaires Q2.",
     status: "PENDING",
   },
   {
-    id: "req-004", createdAt: daysAgo(5), requesterId: "u-admin", beneficiaryId: "ag-006",
+    id: "req-004", createdAt: daysAgo(5), requesterId: "u-admin", operation: "ADD", beneficiaryId: "ag-006",
     applicationId: "app-it", profileId: "pr-it-admin", moduleId: "m-it-admin-1",
     startDate: daysAgo(2), endDate: daysAhead(360),
     justification: "Promotion au poste d'administrateur système délégation Tanger.",
@@ -212,7 +212,7 @@ export const accessRequests: AccessRequest[] = [
     decidedAt: daysAgo(2), decidedById: "u-val",
   },
   {
-    id: "req-005", createdAt: daysAgo(7), requesterId: "u-mgr", beneficiaryId: "ag-008",
+    id: "req-005", createdAt: daysAgo(7), requesterId: "u-mgr", operation: "ADD", beneficiaryId: "ag-008",
     applicationId: "app-fin", profileId: "pr-fin-compt", moduleId: "m-fin-compt-1",
     startDate: daysAgo(4), endDate: daysAhead(180),
     justification: "Élargissement du périmètre comptable agent.",
@@ -221,7 +221,7 @@ export const accessRequests: AccessRequest[] = [
     decidedAt: daysAgo(4), decidedById: "u-val",
   },
   {
-    id: "req-006", createdAt: daysAgo(10), requesterId: "u-mgr", beneficiaryId: "ag-007",
+    id: "req-006", createdAt: daysAgo(10), requesterId: "u-mgr", operation: "ADD", beneficiaryId: "ag-007",
     applicationId: "app-rh", profileId: "pr-rh-admin", moduleId: "m-rh-admin-1",
     startDate: daysAgo(8), endDate: daysAhead(180),
     justification: "Demande d'accès admin RH.",
@@ -230,7 +230,7 @@ export const accessRequests: AccessRequest[] = [
     decidedAt: daysAgo(8), decidedById: "u-val",
   },
   {
-    id: "req-007", createdAt: daysAgo(15), requesterId: "u-admin", beneficiaryId: "ag-002",
+    id: "req-007", createdAt: daysAgo(15), requesterId: "u-admin", operation: "ADD", beneficiaryId: "ag-002",
     applicationId: "app-paie", profileId: "pr-paie-gest", moduleId: "m-paie-gest-2",
     startDate: daysAgo(12), endDate: daysAhead(90),
     justification: "Appui clôture mensuelle.",
@@ -239,21 +239,21 @@ export const accessRequests: AccessRequest[] = [
     decidedAt: daysAgo(12), decidedById: "u-val",
   },
   {
-    id: "req-008", createdAt: daysAgo(20), requesterId: "u-mgr", beneficiaryId: "ag-011",
+    id: "req-008", createdAt: daysAgo(20), requesterId: "u-mgr", operation: "ADD", beneficiaryId: "ag-011",
     applicationId: "app-fin", profileId: "pr-fin-resp", moduleId: "m-fin-resp-1",
     startDate: daysAgo(18), endDate: daysAgo(2),
     justification: "Mission temporaire Q1.",
     status: "EXPIRED",
   },
   {
-    id: "req-009", createdAt: daysAgo(4), requesterId: "u-mgr", beneficiaryId: "ag-014",
+    id: "req-009", createdAt: daysAgo(4), requesterId: "u-mgr", operation: "ADD", beneficiaryId: "ag-014",
     applicationId: "app-rh", profileId: "pr-rh-gest", moduleId: "m-rh-gest-2",
     startDate: daysAhead(3), endDate: daysAhead(150),
     justification: "Gestion contrats nouveaux recrutements.",
     status: "PENDING",
   },
   {
-    id: "req-010", createdAt: daysAgo(6), requesterId: "u-admin", beneficiaryId: "ag-012",
+    id: "req-010", createdAt: daysAgo(6), requesterId: "u-admin", operation: "ADD", beneficiaryId: "ag-012",
     applicationId: "app-it", profileId: "pr-it-sup", moduleId: "m-it-sup-1",
     startDate: daysAgo(3), endDate: daysAhead(360),
     justification: "Intégration support N1 — délégation Casablanca.",
