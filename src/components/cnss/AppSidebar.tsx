@@ -11,7 +11,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { LayoutDashboard, Users, FilePlus2, ClipboardCheck, ScrollText } from "lucide-react";
+import { LayoutDashboard, Users, ScrollText, Settings2, Search, Layers3 } from "lucide-react";
 import type { Role } from "@/mocks/types";
 import { canAccess, type RouteKey } from "@/lib/access";
 import { CnssLogo } from "./CnssLogo";
@@ -27,8 +27,9 @@ interface NavItem {
 const NAV: NavItem[] = [
   { key: "dashboard", title: "Tableau de bord", url: "/", icon: LayoutDashboard },
   { key: "agents", title: "Agents", url: "/agents", icon: Users },
-  { key: "requests", title: "Demandes d'accès", url: "/access-requests", icon: FilePlus2 },
-  { key: "validation", title: "File de validation", url: "/validation", icon: ClipboardCheck },
+  { key: "profileAssignments", title: "Affectations profils", url: "/affectations-profils", icon: Layers3 },
+  { key: "consultation", title: "Consultation", url: "/consultation", icon: Search },
+  { key: "parameters", title: "Paramétrage", url: "/parameters", icon: Settings2 },
   { key: "audit", title: "Journal d'audit", url: "/audit", icon: ScrollText },
 ];
 
@@ -63,7 +64,7 @@ export function AppSidebar({ role }: { role: Role }) {
               {visible.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <SidebarMenuItem key={item.key}>
+                  <SidebarMenuItem key={item.url}>
                     <SidebarMenuButton asChild tooltip={item.title}>
                       <NavLink
                         to={item.url}

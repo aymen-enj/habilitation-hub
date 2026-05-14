@@ -82,6 +82,18 @@ interface DemoState {
     targetDelegationId: string,
     operation: AgencyChangeOperation,
   ) => void;
+  assignProfilesToAgent: (
+    agentId: string,
+    profileIds: string[],
+    startDate: string,
+    endDate: string,
+  ) => void;
+  suspendProfilesForAgent: (
+    agentId: string,
+    profileIds: string[],
+    suspensionStartDate?: string,
+    suspensionEndDate?: string,
+  ) => void;
   closeAgentRight: (agentId: string, habilitationId: string) => void;
   closeBatchRights: (items: Array<{ agentId: string; habilitationId: string }>) => number;
 }
@@ -548,6 +560,158 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
     [session, agents, pushEvent],
   );
 
+  const assignProfilesToAgent = useCallback(
+    (agentId: string, profileIds: string[], startDate: string, endDate: string) => {
+      if (!session?.user || profileIds.length === 0) return;
+
+      const nowIso = new Date().toISOString();
+      const uniqueProfileIds = Array.from(new Set(profileIds));
+      const targetProfiles = profiles.filter((profile) => uniqueProfileIds.includes(profile.id));
+
+      if (targetProfiles.length === 0) return;
+
+      const profileNames = targetProfiles.map((profile) => profile.name).join(", ");
+
+      setAgents((prev) =>
+        prev.map((agent) => {
+          if (agent.id !== agentId) return agent;
+
+          const nextHabilitations = [...agent.habilitations];
+
+          for (const profile of targetProfiles) {
+            const profileModules = modules.filter((module) => module.profileId === profile.id);
+
+            for (const module of profileModules) {
+              const index = nextHabilitations.findIndex(
+                (habilitation) =>
+                  habilitation.applicationId === profile.applicationId &&
+                  habilitation.profileId === profile.id &&
+                  habilitation.moduleId === module.id,
+              );
+
+              if (index >= 0) {
+                nextHabilitations[index] = {
+                  ...nextHabilitations[index],
+                  startDate,
+                  endDate,
+                };
+              } else {
+                nextHabilitations.unshift({
+                  id: `h-${Date.now()}-${agentId}-${profile.id}-${module.id}`,
+                  applicationId: profile.applicationId,
+                  profileId: profile.id,
+                  moduleId: module.id,
+                  startDate,
+                  endDate,
+                });
+              }
+            }
+          }
+
+          return {
+            ...agent,
+            status: "ACTIF",
+            habilitations: nextHabilitations,
+          };
+        }),
+      );
+
+      pushEvent(
+        "PROFILE_GRANTED",
+        `agent:${agentId}`,
+        `Profil(s) accordé(s) ${profileNames} avec prise d'effet au ${startDate} et fin au ${endDate}.`,
+      );
+    },
+    [session, profiles, modules, pushEvent],
+  );
+
+  const suspendProfilesForAgent = useCallback(
+    (
+      agentId: string,
+      profileIds: string[],
+      suspensionStartDate?: string,
+      suspensionEndDate?: string,
+    ) => {
+      if (!session?.user || profileIds.length === 0) return;
+
+      const nowIso = new Date().toISOString();
+      const startDate = suspensionStartDate
+        ? new Date(suspensionStartDate)
+        : new Date();
+      const suspendFromIso = Number.isNaN(startDate.getTime())
+        ? nowIso
+        : startDate.toISOString();
+      const endDate = suspensionEndDate ? new Date(suspensionEndDate) : null;
+      const endIsoCandidate =
+        endDate && !Number.isNaN(endDate.getTime()) ? endDate.toISOString() : undefined;
+      const suspendUntilIso =
+        endIsoCandidate &&
+        !Number.isNaN(new Date(endIsoCandidate).getTime()) &&
+        endIsoCandidate > suspendFromIso
+          ? endIsoCandidate
+          : undefined;
+      const uniqueProfileIds = new Set(profileIds);
+      const targetProfiles = profiles.filter((profile) => uniqueProfileIds.has(profile.id));
+      if (targetProfiles.length === 0) return;
+
+      const profileNames = targetProfiles.map((profile) => profile.name).join(", ");
+
+      setAgents((prev) =>
+        prev.map((agent) => {
+          if (agent.id !== agentId) return agent;
+
+          const profileModuleIds = new Set(
+            modules
+              .filter((module) => uniqueProfileIds.has(module.profileId))
+              .map((module) => module.id),
+          );
+
+          const nextHabilitations = agent.habilitations.flatMap((habilitation, index) => {
+            if (
+              uniqueProfileIds.has(habilitation.profileId) &&
+              profileModuleIds.has(habilitation.moduleId) &&
+              new Date(habilitation.endDate) > new Date(suspendFromIso)
+            ) {
+              const closedRight = { ...habilitation, endDate: suspendFromIso };
+
+              if (!suspendUntilIso || new Date(habilitation.endDate) <= new Date(suspendUntilIso)) {
+                return [closedRight];
+              }
+
+              const resumedRight = {
+                ...habilitation,
+                id: `h-${Date.now()}-${agentId}-${habilitation.profileId}-${habilitation.moduleId}-${index}`,
+                startDate: suspendUntilIso,
+                endDate: habilitation.endDate,
+              };
+              return [closedRight, resumedRight];
+            }
+            return [habilitation];
+          });
+
+          const isStillActive = nextHabilitations.some(
+            (habilitation) => new Date(habilitation.endDate) > new Date(nowIso),
+          );
+
+          return {
+            ...agent,
+            status: isStillActive ? "ACTIF" : "INACTIF",
+            habilitations: nextHabilitations,
+          };
+        }),
+      );
+
+      pushEvent(
+        "PROFILE_SUSPENDED",
+        `agent:${agentId}`,
+        suspendUntilIso
+          ? `Profil(s) suspendu(s) ${profileNames} du ${suspendFromIso.slice(0, 10)} au ${suspendUntilIso.slice(0, 10)}.`
+          : `Profil(s) suspendu(s) ${profileNames} a partir du ${suspendFromIso.slice(0, 10)}.`,
+      );
+    },
+    [session, profiles, modules, pushEvent],
+  );
+
   const closeAgentRight = useCallback(
     (agentId: string, habilitationId: string) => {
       if (!session?.user) return;
@@ -651,6 +815,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       decideRequest,
       decideBatchRequests,
       changeAgentAgency,
+      assignProfilesToAgent,
+      suspendProfilesForAgent,
       closeAgentRight,
       closeBatchRights,
     }),
@@ -667,6 +833,8 @@ export function DemoStateProvider({ children }: { children: ReactNode }) {
       decideRequest,
       decideBatchRequests,
       changeAgentAgency,
+      assignProfilesToAgent,
+      suspendProfilesForAgent,
       closeAgentRight,
       closeBatchRights,
     ],
@@ -680,3 +848,4 @@ export function useDemo() {
   if (!ctx) throw new Error("useDemo must be used within DemoStateProvider");
   return ctx;
 }
+

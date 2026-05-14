@@ -17,7 +17,7 @@ export function CnssLogo({ className, variant = "dark" }: CnssLogoProps) {
       <div className={cn("flex flex-col leading-tight", fg)}>
         <span className="text-sm font-bold tracking-wide">CNSS</span>
         <span className={cn("text-[10px] font-medium uppercase tracking-wider", variant === "light" ? "text-white/70" : "text-muted-foreground")}>
-          Habilitations
+          Gestion des habilitations
         </span>
       </div>
     </div>

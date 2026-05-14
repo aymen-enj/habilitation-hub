@@ -1,10 +1,9 @@
 import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { Users, UserCheck, Clock, CheckCircle2, ArrowRight } from "lucide-react";
+import { AppWindow, ArrowRight, Layers3, Users, UserCheck } from "lucide-react";
 import { useDemo } from "@/state/DemoState";
 import { PageHeader } from "@/components/cnss/PageHeader";
 import { StatCard } from "@/components/cnss/StatCard";
-import { Button } from "@/components/ui/button";
 import { ROLE_LABEL, canAccess, type RouteKey } from "@/lib/access";
 import { cn } from "@/lib/utils";
 
@@ -17,23 +16,24 @@ interface QuickAction {
 
 const QUICK_ACTIONS: QuickAction[] = [
   { route: "agents", to: "/agents", title: "Consulter les agents", description: "Parcourir les agents et leurs habilitations actives." },
-  { route: "requests", to: "/access-requests", title: "Créer une demande", description: "Soumettre une nouvelle demande d'accès au nom d'un agent." },
-  { route: "validation", to: "/validation", title: "Traiter la file de validation", description: "Approuver ou rejeter les demandes en attente." },
+  { route: "profileAssignments", to: "/affectations-profils", title: "Affecter des profils", description: "Attribuer ou suspendre des profils directement, ou traiter un lot Excel." },
+  { route: "consultation", to: "/consultation", title: "Consulter les habilitations", description: "Filtrer et analyser les habilitations existantes." },
+  { route: "parameters", to: "/parameters", title: "Paramétrer les référentiels", description: "Configurer applications, profils et autorisations." },
   { route: "audit", to: "/audit", title: "Consulter l'audit", description: "Examiner la chronologie des évènements importants." },
 ];
 
 export default function Dashboard() {
-  const { session, agents, requests } = useDemo();
+  const { session, agents, applications, profiles } = useDemo();
   const navigate = useNavigate();
   const user = session!.user;
 
   const stats = useMemo(() => {
     const totalAgents = agents.length;
     const activeAgents = agents.filter((a) => a.status === "ACTIF").length;
-    const pending = requests.filter((r) => r.status === "PENDING").length;
-    const approved = requests.filter((r) => r.status === "APPROVED").length;
-    return { totalAgents, activeAgents, pending, approved };
-  }, [agents, requests]);
+    const totalApplications = applications.length;
+    const totalProfiles = profiles.length;
+    return { totalAgents, activeAgents, totalApplications, totalProfiles };
+  }, [agents, applications, profiles]);
 
   const visibleActions = QUICK_ACTIONS.filter((a) => canAccess(a.route, user.role));
 
@@ -49,8 +49,8 @@ export default function Dashboard() {
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <StatCard label="Agents totaux" value={stats.totalAgents} icon={Users} tone="default" />
           <StatCard label="Agents actifs" value={stats.activeAgents} icon={UserCheck} tone="success" />
-          <StatCard label="Demandes en attente" value={stats.pending} icon={Clock} tone="warning" hint="À traiter par le validateur" />
-          <StatCard label="Demandes approuvées" value={stats.approved} icon={CheckCircle2} tone="accent" />
+          <StatCard label="Applications" value={stats.totalApplications} icon={AppWindow} tone="accent" />
+          <StatCard label="Profils" value={stats.totalProfiles} icon={Layers3} tone="warning" />
         </div>
       </section>
 

@@ -9,9 +9,11 @@ import { AlertBanner } from "./AlertBanner";
 const PATH_TO_ROUTE: Record<string, RouteKey> = {
   "/": "dashboard",
   "/agents": "agents",
-  "/access-requests": "requests",
-  "/validation": "validation",
+  "/consultation": "consultation",
+  "/requests": "consultation",
   "/audit": "audit",
+  "/parameters": "parameters",
+  "/affectations-profils": "profileAssignments",
 };
 
 export function AppShell() {

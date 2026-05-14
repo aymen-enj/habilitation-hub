@@ -25,39 +25,39 @@ export const delegations: Delegation[] = [
 ];
 
 export const applications: Application[] = [
-  { id: "app-rh", name: "SIRH", domain: "RH" },
-  { id: "app-paie", name: "Paie & Rémunération", domain: "RH" },
-  { id: "app-fin", name: "Comptabilité Générale", domain: "Finance" },
-  { id: "app-bud", name: "Budget & Engagements", domain: "Finance" },
-  { id: "app-it", name: "Portail IT Admin", domain: "IT" },
+  { id: "app-rh", code: "E.T_APM", name: "SIRH", abbreviation: "SIRH", domain: "RH" },
+  { id: "app-paie", code: "PGE_PAIE", name: "Paie & Rémunération", abbreviation: "PAIE", domain: "RH" },
+  { id: "app-fin", code: "PGE_FIN", name: "Comptabilité Générale", abbreviation: "FIN", domain: "Finance" },
+  { id: "app-bud", code: "PGE_BUD", name: "Budget & Engagements", abbreviation: "BUD", domain: "Finance" },
+  { id: "app-it", code: "PGE_IT", name: "Portail IT Admin", abbreviation: "IT", domain: "IT" },
 ];
 
 export const profiles: Profile[] = [
-  { id: "pr-rh-cons", applicationId: "app-rh", name: "Consultation" },
-  { id: "pr-rh-gest", applicationId: "app-rh", name: "Gestionnaire RH" },
-  { id: "pr-rh-admin", applicationId: "app-rh", name: "Administrateur RH" },
-  { id: "pr-paie-gest", applicationId: "app-paie", name: "Gestionnaire Paie" },
-  { id: "pr-paie-cons", applicationId: "app-paie", name: "Consultation Paie" },
-  { id: "pr-fin-compt", applicationId: "app-fin", name: "Comptable" },
-  { id: "pr-fin-resp", applicationId: "app-fin", name: "Responsable Finance" },
-  { id: "pr-bud-gest", applicationId: "app-bud", name: "Gestionnaire Budget" },
-  { id: "pr-it-sup", applicationId: "app-it", name: "Support N1" },
-  { id: "pr-it-admin", applicationId: "app-it", name: "Administrateur Système" },
+  { id: "pr-rh-cons", code: "PRO_RH_CONS", applicationId: "app-rh", name: "Consultation", abbreviation: "CONS" },
+  { id: "pr-rh-gest", code: "PRO_RH_GEST", applicationId: "app-rh", name: "Gestionnaire RH", abbreviation: "GEST" },
+  { id: "pr-rh-admin", code: "PRO_RH_ADMIN", applicationId: "app-rh", name: "Administrateur RH", abbreviation: "ADMIN" },
+  { id: "pr-paie-gest", code: "PRO_PAIE_GEST", applicationId: "app-paie", name: "Gestionnaire Paie", abbreviation: "GEST" },
+  { id: "pr-paie-cons", code: "PRO_PAIE_CONS", applicationId: "app-paie", name: "Consultation Paie", abbreviation: "CONS" },
+  { id: "pr-fin-compt", code: "PRO_FIN_COMPT", applicationId: "app-fin", name: "Comptable", abbreviation: "COMPT" },
+  { id: "pr-fin-resp", code: "PRO_FIN_RESP", applicationId: "app-fin", name: "Responsable Finance", abbreviation: "RESP" },
+  { id: "pr-bud-gest", code: "PRO_BUD_GEST", applicationId: "app-bud", name: "Gestionnaire Budget", abbreviation: "GEST" },
+  { id: "pr-it-sup", code: "PRO_IT_SUP", applicationId: "app-it", name: "Support N1", abbreviation: "SUP" },
+  { id: "pr-it-admin", code: "PRO_IT_ADMIN", applicationId: "app-it", name: "Administrateur Système", abbreviation: "ADMIN" },
 ];
 
 export const modules: Module[] = [
-  { id: "m-rh-cons-1", profileId: "pr-rh-cons", name: "Dossier agent (lecture)" },
-  { id: "m-rh-gest-1", profileId: "pr-rh-gest", name: "Gestion des absences" },
-  { id: "m-rh-gest-2", profileId: "pr-rh-gest", name: "Gestion des contrats" },
-  { id: "m-rh-admin-1", profileId: "pr-rh-admin", name: "Paramétrage RH" },
-  { id: "m-paie-gest-1", profileId: "pr-paie-gest", name: "Édition bulletins" },
-  { id: "m-paie-gest-2", profileId: "pr-paie-gest", name: "Clôture mensuelle" },
-  { id: "m-paie-cons-1", profileId: "pr-paie-cons", name: "Consultation bulletins" },
-  { id: "m-fin-compt-1", profileId: "pr-fin-compt", name: "Saisie écritures" },
-  { id: "m-fin-resp-1", profileId: "pr-fin-resp", name: "Validation écritures" },
-  { id: "m-bud-gest-1", profileId: "pr-bud-gest", name: "Engagements budgétaires" },
-  { id: "m-it-sup-1", profileId: "pr-it-sup", name: "Tickets utilisateurs" },
-  { id: "m-it-admin-1", profileId: "pr-it-admin", name: "Gestion comptes AD" },
+  { id: "m-rh-cons-1", code: "MOD_RH_CONS_1", profileId: "pr-rh-cons", name: "Dossier agent (lecture)", abbreviation: "CONS_DOSS", physicalName: "DOSSIER_AGENT_READ", extension: "PFF", type: "PAGE" },
+  { id: "m-rh-gest-1", code: "MOD_RH_GEST_1", profileId: "pr-rh-gest", name: "Gestion des absences", abbreviation: "GEST_ABS", physicalName: "GESTION_ABSENCES", extension: "PFF", type: "FORM" },
+  { id: "m-rh-gest-2", code: "MOD_RH_GEST_2", profileId: "pr-rh-gest", name: "Gestion des contrats", abbreviation: "GEST_CONT", physicalName: "GESTION_CONTRATS", extension: "PFF", type: "FORM" },
+  { id: "m-rh-admin-1", code: "MOD_RH_ADMIN_1", profileId: "pr-rh-admin", name: "Paramétrage RH", abbreviation: "PARAM_RH", physicalName: "PARAMETRAGE_RH", extension: "PFF", type: "MENU" },
+  { id: "m-paie-gest-1", code: "MOD_PAIE_GEST_1", profileId: "pr-paie-gest", name: "Édition bulletins", abbreviation: "EDIT_BULL", physicalName: "EDITION_BULLETINS", extension: "FFF", type: "REPORT" },
+  { id: "m-paie-gest-2", code: "MOD_PAIE_GEST_2", profileId: "pr-paie-gest", name: "Clôture mensuelle", abbreviation: "CLOT_MENS", physicalName: "CLOTURE_MENSUELLE", extension: "PFF", type: "FORM" },
+  { id: "m-paie-cons-1", code: "MOD_PAIE_CONS_1", profileId: "pr-paie-cons", name: "Consultation bulletins", abbreviation: "CONS_BULL", physicalName: "CONSULTATION_BULLETINS", extension: "PFF", type: "PAGE" },
+  { id: "m-fin-compt-1", code: "MOD_FIN_COMPT_1", profileId: "pr-fin-compt", name: "Saisie écritures", abbreviation: "SAISE_ECR", physicalName: "SAISIE_ECRITURES", extension: "PFF", type: "FORM" },
+  { id: "m-fin-resp-1", code: "MOD_FIN_RESP_1", profileId: "pr-fin-resp", name: "Validation écritures", abbreviation: "VAL_ECR", physicalName: "VALIDATION_ECRITURES", extension: "PFF", type: "FORM" },
+  { id: "m-bud-gest-1", code: "MOD_BUD_GEST_1", profileId: "pr-bud-gest", name: "Engagements budgétaires", abbreviation: "ENG_BUD", physicalName: "ENGAGEMENTS_BUDGETAIRES", extension: "PFF", type: "FORM" },
+  { id: "m-it-sup-1", code: "MOD_IT_SUP_1", profileId: "pr-it-sup", name: "Tickets utilisateurs", abbreviation: "TICK_USER", physicalName: "TICKETS_UTILISATEURS", extension: "PFF", type: "PORTAL" },
+  { id: "m-it-admin-1", code: "MOD_IT_ADMIN_1", profileId: "pr-it-admin", name: "Gestion comptes AD", abbreviation: "GEST_AD", physicalName: "GESTION_COMPTES_AD", extension: "PFF", type: "ADMIN" },
 ];
 
 const today = new Date();

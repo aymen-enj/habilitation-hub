@@ -8,16 +8,16 @@ import { FormField } from "@/components/cnss/FormField";
 import { CnssLogo } from "@/components/cnss/CnssLogo";
 import { ROLE_LABEL } from "@/lib/access";
 import type { Role } from "@/mocks/types";
-import { ShieldCheck, Users, ClipboardCheck, ScrollText } from "lucide-react";
+import { ScrollText, Search, Settings2, Users } from "lucide-react";
 import { toast } from "sonner";
 
 const ROLES: Role[] = ["ADMIN", "MANAGER", "VALIDATOR", "AUDIT_VIEWER"];
 
 const ROLE_HINT: Record<Role, string> = {
   ADMIN: "Accès complet à toutes les pages.",
-  MANAGER: "Tableau de bord, agents et création de demandes.",
-  VALIDATOR: "Tableau de bord, agents, file de validation et audit.",
-  AUDIT_VIEWER: "Lecture seule du tableau de bord, des agents et de l'audit.",
+  MANAGER: "Tableau de bord, agents et consultation des habilitations.",
+  VALIDATOR: "Tableau de bord, agents, consultation et audit.",
+  AUDIT_VIEWER: "Lecture seule du tableau de bord, des agents, de la consultation et de l'audit.",
 };
 
 export default function Login() {
@@ -72,9 +72,9 @@ export default function Login() {
           <ul className="space-y-3 text-sm">
             {[
               { Icon: Users, label: "Gestion centralisée des agents et des délégations" },
-              { Icon: ClipboardCheck, label: "Validation à plusieurs niveaux" },
+              { Icon: Search, label: "Consultation des habilitations existantes" },
+              { Icon: Settings2, label: "Paramétrage des référentiels applicatifs" },
               { Icon: ScrollText, label: "Journal d'audit immuable" },
-              { Icon: ShieldCheck, label: "Sécurité et confidentialité par défaut" },
             ].map(({ Icon, label }) => (
               <li key={label} className="flex items-center gap-3">
                 <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-cnss-accent/20 text-cnss-accent">

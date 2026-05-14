@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Search, UserCircle2, Building2, Briefcase, History } from "lucide-react";
+import { UserCircle2, History } from "lucide-react";
 import { useDemo } from "@/state/DemoState";
 import { PageHeader } from "@/components/cnss/PageHeader";
 import { Input } from "@/components/ui/input";
@@ -48,20 +48,20 @@ export default function Agents() {
     delegations,
     applications,
     profiles,
-    modules,
     users,
     session,
     events,
     changeAgentAgency,
-    closeAgentRight,
   } = useDemo();
 
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [agentSuggestionsOpen, setAgentSuggestionsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"statistics" | "agency" | "rights">("statistics");
   const [targetDelegationId, setTargetDelegationId] = useState<string>("");
   const [operation, setOperation] = useState<AgencyChangeOperation>("CHANGE_TRANSFER_RIGHTS");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [rightsFilter, setRightsFilter] = useState("");
 
   const isReadOnly = session!.user.role === "AUDIT_VIEWER";
   const normalizedQuery = query.trim().toLowerCase();
@@ -87,6 +87,7 @@ export default function Agents() {
   }, [matches, selectedId]);
 
   const selected = matches.find((a) => a.id === selectedId) ?? null;
+  const hasSelection = selected !== null;
 
   useEffect(() => {
     if (!selected) return;
@@ -100,7 +101,6 @@ export default function Agents() {
   const delegationName = (id: string) => delegations.find((d) => d.id === id)?.name ?? "—";
   const appName = (id: string) => applications.find((a) => a.id === id)?.name ?? id;
   const profileName = (id: string) => profiles.find((p) => p.id === id)?.name ?? id;
-  const moduleName = (id: string) => modules.find((m) => m.id === id)?.name ?? id;
   const managerName = (id?: string) => users.find((u) => u.id === id)?.name;
 
   const now = new Date();
@@ -118,6 +118,58 @@ export default function Agents() {
     () => (selected ? events.filter((e) => e.type === "AGENCY_CHANGED" && e.target === `agent:${selected.id}`) : []),
     [events, selected],
   );
+  const rights = selected?.habilitations ?? [];
+
+  const rightsRows = useMemo(() => {
+    if (!selected) return [];
+
+    const grouped = new Map<
+      string,
+      {
+        id: string;
+        profileId: string;
+        applicationLabel: string;
+        profileLabel: string;
+        startDate: string;
+        endDate: string;
+      }
+    >();
+
+    rights.forEach((h) => {
+      const key = `${h.applicationId}-${h.profileId}`;
+      const current = grouped.get(key);
+
+      if (!current) {
+        grouped.set(key, {
+          id: key,
+          profileId: h.profileId,
+          applicationLabel: appName(h.applicationId),
+          profileLabel: profileName(h.profileId),
+          startDate: h.startDate,
+          endDate: h.endDate,
+        });
+        return;
+      }
+
+      grouped.set(key, {
+        ...current,
+        startDate: new Date(h.startDate) < new Date(current.startDate) ? h.startDate : current.startDate,
+        endDate: new Date(h.endDate) > new Date(current.endDate) ? h.endDate : current.endDate,
+      });
+    });
+
+    return Array.from(grouped.values()).sort((a, b) =>
+      `${a.applicationLabel}-${a.profileLabel}`.localeCompare(
+        `${b.applicationLabel}-${b.profileLabel}`,
+      ),
+    );
+  }, [selected, rights, applications, profiles]);
+
+  const normalizedRightsFilter = rightsFilter.trim().toLowerCase();
+  const filteredRightsRows = useMemo(() => {
+    if (!normalizedRightsFilter) return rightsRows;
+    return rightsRows.filter((row) => row.profileLabel.toLowerCase().includes(normalizedRightsFilter));
+  }, [rightsRows, normalizedRightsFilter]);
 
   const onValidateAgencyChange = () => {
     if (!selected) return;
@@ -137,10 +189,6 @@ export default function Agents() {
     setActiveTab("statistics");
   };
 
-  const onCloseRight = (agentId: string, rightId: string) => {
-    closeAgentRight(agentId, rightId);
-    toast.success("Le droit a ete ferme.");
-  };
 
   return (
     <div className="cnss-page space-y-6">
@@ -156,42 +204,52 @@ export default function Agents() {
       )}
 
       <section className="cnss-card space-y-4 p-5">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden="true" />
+        <div className="relative space-y-2">
           <Input
             aria-label="Rechercher un agent par nom ou matricule"
-            placeholder="Rechercher un agent par nom ou matricule..."
-            className="pl-9"
+            placeholder="Rechercher par nom ou matricule (ex: CNSS-10421)"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(event) => {
+              setQuery(event.target.value);
+              setAgentSuggestionsOpen(true);
+            }}
+            onFocus={() => setAgentSuggestionsOpen(true)}
+            onBlur={() => setAgentSuggestionsOpen(false)}
+            autoComplete="off"
           />
+          {agentSuggestionsOpen && normalizedQuery && (
+            <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-md border border-border bg-popover p-1 shadow-md">
+              {matches.length === 0 ? (
+                <p className="px-3 py-2 text-xs text-muted-foreground">Aucun agent conforme a cette recherche.</p>
+              ) : (
+                matches.slice(0, 12).map((agent) => (
+                  <button
+                    key={agent.id}
+                    type="button"
+                    className="w-full rounded-sm px-3 py-2 text-left hover:bg-muted/60"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      setQuery(agent.matricule);
+                      setSelectedId(agent.id);
+                      setAgentSuggestionsOpen(false);
+                    }}
+                  >
+                    <p className="text-sm font-semibold text-foreground">{agent.firstName} {agent.lastName}</p>
+                    <p className="font-mono text-xs text-cnss-primary">{agent.matricule}</p>
+                  </button>
+                ))
+              )}
+            </div>
+          )}
+          <p className="text-xs text-muted-foreground">
+            {selected
+              ? `${selected.firstName} ${selected.lastName} - ${selected.matricule}`
+              : "Saisissez un nom ou un matricule pour charger l'agent."}
+          </p>
         </div>
-
-        {normalizedQuery && matches.length > 1 && (
-          <div className="space-y-2">
-            <Label htmlFor="agent-result">Resultats ({matches.length})</Label>
-            <Select value={selectedId ?? matches[0]?.id ?? ""} onValueChange={setSelectedId}>
-              <SelectTrigger id="agent-result">
-                <SelectValue placeholder="Choisir un agent" />
-              </SelectTrigger>
-              <SelectContent>
-                {matches.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    {a.firstName} {a.lastName} - {a.matricule}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        )}
       </section>
 
-      {!normalizedQuery ? (
-        <EmptyState
-          title="Saisissez un nom ou un matricule"
-          description="La fiche agent s'affiche apres recherche."
-        />
-      ) : matches.length === 0 ? (
+      {normalizedQuery && matches.length === 0 ? (
         <EmptyState
           title="Aucun agent trouve"
           description="Essayez un autre nom ou code agent."
@@ -200,7 +258,7 @@ export default function Agents() {
             onClick: () => setQuery(""),
           }}
         />
-      ) : selected ? (
+      ) : (
         <section className="cnss-card space-y-5 p-5">
           <div className="flex items-start gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-cnss-accent-soft text-cnss-primary">
@@ -208,29 +266,31 @@ export default function Agents() {
             </div>
             <div className="min-w-0 flex-1">
               <h3 className="text-base font-semibold text-foreground">
-                {selected.firstName} {selected.lastName}
+                {selected ? `${selected.firstName} ${selected.lastName}` : "-"}
               </h3>
-              <p className="font-mono text-xs text-muted-foreground">{selected.matricule}</p>
+              <p className="font-mono text-xs text-muted-foreground">{selected ? selected.matricule : "-"}</p>
             </div>
-            <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium", STATUS_STYLES[selected.status])}>
-              {STATUS_LABEL[selected.status]}
-            </span>
+            {selected && (
+              <span className={cn("inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium", STATUS_STYLES[selected.status])}>
+                {STATUS_LABEL[selected.status]}
+              </span>
+            )}
           </div>
 
           <dl className="grid gap-3 text-sm md:grid-cols-3">
             <div className="rounded-md border border-border bg-muted/30 p-3">
               <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Code agent</dt>
-              <dd className="mt-1 font-mono text-foreground">{selected.matricule}</dd>
+              <dd className="mt-1 font-mono text-foreground">{selected ? selected.matricule : "-"}</dd>
             </div>
             <div className="rounded-md border border-border bg-muted/30 p-3">
               <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Agence actuelle</dt>
-              <dd className="mt-1 text-foreground">{delegationName(selected.delegationId)}</dd>
+              <dd className="mt-1 text-foreground">{selected ? delegationName(selected.delegationId) : "-"}</dd>
             </div>
             <div className="rounded-md border border-border bg-muted/30 p-3">
               <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Domaine</dt>
-              <dd className="mt-1 text-foreground">{selected.domain}</dd>
+              <dd className="mt-1 text-foreground">{selected ? selected.domain : "-"}</dd>
             </div>
-            {managerName(selected.managerId) && (
+            {selected && managerName(selected.managerId) && (
               <div className="rounded-md border border-border bg-muted/30 p-3 md:col-span-3">
                 <dt className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Responsable</dt>
                 <dd className="mt-1 text-foreground">{managerName(selected.managerId)}</dd>
@@ -261,7 +321,7 @@ export default function Agents() {
                 </div>
               </div>
 
-              <Button type="button" variant="outline" onClick={() => setHistoryOpen(true)}>
+              <Button type="button" variant="outline" onClick={() => setHistoryOpen(true)} disabled={!hasSelection}>
                 <History className="mr-2 h-4 w-4" />
                 Historique des affectations
               </Button>
@@ -270,7 +330,7 @@ export default function Agents() {
             <TabsContent value="agency" className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="target-agency">Agence cible</Label>
-                <Select value={targetDelegationId} onValueChange={setTargetDelegationId}>
+                <Select value={targetDelegationId} onValueChange={setTargetDelegationId} disabled={!hasSelection || isReadOnly}>
                   <SelectTrigger id="target-agency">
                     <SelectValue placeholder="Choisir l'agence cible" />
                   </SelectTrigger>
@@ -287,7 +347,7 @@ export default function Agents() {
                 <RadioGroup value={operation} onValueChange={(v) => setOperation(v as AgencyChangeOperation)}>
                   {AGENCY_OPERATIONS.map((option) => (
                     <div key={option.value} className="flex items-center gap-2 py-0.5">
-                      <RadioGroupItem id={`op-${option.value}`} value={option.value} disabled={isReadOnly} />
+                      <RadioGroupItem id={`op-${option.value}`} value={option.value} disabled={isReadOnly || !hasSelection} />
                       <Label htmlFor={`op-${option.value}`} className="cursor-pointer font-normal">
                         {option.label}
                       </Label>
@@ -296,17 +356,13 @@ export default function Agents() {
                 </RadioGroup>
               </div>
 
-              <Button type="button" onClick={onValidateAgencyChange} disabled={isReadOnly}>
+              <Button type="button" onClick={onValidateAgencyChange} disabled={isReadOnly || !hasSelection}>
                 Valider
               </Button>
             </TabsContent>
 
-            <TabsContent value="rights" className="space-y-3">
-              {selected.habilitations.length === 0 ? (
-                <p className="rounded-lg border border-dashed border-border bg-muted/40 p-3 text-xs text-muted-foreground">
-                  Aucune autorisation pour cet agent.
-                </p>
-              ) : (
+            <TabsContent value="rights" className="space-y-4">
+              {!hasSelection ? (
                 <div className="overflow-x-auto rounded-md border border-border">
                   <Table>
                     <TableHeader>
@@ -314,45 +370,63 @@ export default function Agents() {
                         <TableHead>Agence</TableHead>
                         <TableHead>Application</TableHead>
                         <TableHead>Profil</TableHead>
-                        <TableHead>Module</TableHead>
                         <TableHead>D Debut</TableHead>
                         <TableHead>D Fin</TableHead>
-                        <TableHead className="text-right">Action</TableHead>
                       </TableRow>
                     </TableHeader>
-                    <TableBody>
-                      {selected.habilitations.map((h) => {
-                        const open = isOpenRight(h.endDate);
-                        return (
-                          <TableRow key={h.id}>
-                            <TableCell>{delegationName(selected.delegationId)}</TableCell>
-                            <TableCell>{appName(h.applicationId)}</TableCell>
-                            <TableCell>{profileName(h.profileId)}</TableCell>
-                            <TableCell>{moduleName(h.moduleId)}</TableCell>
-                            <TableCell>{formatDate(h.startDate)}</TableCell>
-                            <TableCell>{formatDate(h.endDate)}</TableCell>
-                            <TableCell className="text-right">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant={open ? "outline" : "secondary"}
-                                disabled={isReadOnly || !open}
-                                onClick={() => onCloseRight(selected.id, h.id)}
-                              >
-                                {open ? "Fermer droit" : "Droit ferme"}
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
+                    <TableBody />
                   </Table>
                 </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="rights-filter">Recherche par profil</Label>
+                    <Input
+                      id="rights-filter"
+                      placeholder="Filtrer par profil..."
+                      value={rightsFilter}
+                      onChange={(event) => setRightsFilter(event.target.value)}
+                    />
+                  </div>
+
+                  {filteredRightsRows.length === 0 ? (
+                    <p className="rounded-lg border border-dashed border-border bg-muted/40 p-3 text-xs text-muted-foreground">
+                      Aucune ligne correspondant au filtre.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto rounded-md border border-border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/40 hover:bg-muted/40">
+                            <TableHead>Agence</TableHead>
+                            <TableHead>Application</TableHead>
+                            <TableHead>Profil</TableHead>
+                            <TableHead>D Debut</TableHead>
+                            <TableHead>D Fin</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredRightsRows.map((row) => {
+                            return (
+                              <TableRow key={row.id}>
+                                <TableCell>{delegationName(selected.delegationId)}</TableCell>
+                                <TableCell>{row.applicationLabel}</TableCell>
+                                <TableCell>{row.profileLabel}</TableCell>
+                                <TableCell>{formatDate(row.startDate)}</TableCell>
+                                <TableCell>{formatDate(row.endDate)}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </>
               )}
             </TabsContent>
           </Tabs>
         </section>
-      ) : null}
+      )}
 
       <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
         <DialogContent className="max-w-2xl">

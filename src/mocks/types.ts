@@ -1,10 +1,10 @@
 export type Role = "ADMIN" | "MANAGER" | "VALIDATOR" | "AUDIT_VIEWER";
 
-export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
-
-export type BatchStatus = "PENDING" | "PROCESSING" | "COMPLETED" | "PARTIAL";
-
 export type RequestOperation = "ADD" | "REMOVE";
+
+export type BatchStatus = "PENDING" | "COMPLETED" | "PARTIAL";
+
+export type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "EXPIRED";
 
 export type AgencyChangeOperation =
   | "FIRST_ASSIGNMENT"
@@ -28,20 +28,29 @@ export interface Delegation {
 
 export interface Application {
   id: string;
+  code: string;
   name: string;
+  abbreviation: string;
   domain: "RH" | "Finance" | "IT";
 }
 
 export interface Profile {
   id: string;
+  code: string;
   applicationId: string;
   name: string;
+  abbreviation: string;
 }
 
 export interface Module {
   id: string;
+  code: string;
   profileId: string;
   name: string;
+  abbreviation: string;
+  physicalName: string;
+  extension: string;
+  type: string;
 }
 
 export interface Habilitation {
@@ -51,6 +60,20 @@ export interface Habilitation {
   moduleId: string;
   startDate: string;
   endDate: string;
+}
+
+export interface BatchRequest {
+  id: string;
+  createdAt: string;
+  requesterId: string;
+  operation: RequestOperation;
+  fileName: string;
+  status: BatchStatus;
+  requests: AccessRequest[];
+  totalApproved?: number;
+  totalRejected?: number;
+  decidedAt?: string;
+  decidedById?: string;
 }
 
 export interface Agent {
@@ -69,8 +92,7 @@ export interface AccessRequest {
   id: string;
   createdAt: string;
   requesterId: string;
-  operation: RequestOperation; // ADD ou REMOVE
-  batchId?: string; // ID du lot si fait partie d'un lot
+  batchId?: string;
   beneficiaryId: string;
   applicationId: string;
   profileId: string;
@@ -80,20 +102,6 @@ export interface AccessRequest {
   justification: string;
   status: RequestStatus;
   decisionComment?: string;
-  decidedAt?: string;
-  decidedById?: string;
-}
-
-export interface BatchRequest {
-  id: string;
-  createdAt: string;
-  requesterId: string;
-  operation: RequestOperation;
-  fileName: string;
-  status: BatchStatus;
-  requests: AccessRequest[]; // Les demandes individuelles du lot
-  totalApproved?: number;
-  totalRejected?: number;
   decidedAt?: string;
   decidedById?: string;
 }
@@ -109,7 +117,9 @@ export type AuditEventType =
   | "LOGIN"
   | "LOGOUT"
   | "AGENCY_CHANGED"
-  | "RIGHT_CLOSED";
+  | "RIGHT_CLOSED"
+  | "PROFILE_GRANTED"
+  | "PROFILE_SUSPENDED";
 
 export interface AuditEvent {
   id: string;

@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/cnss/EmptyState";
+import { Pagination } from "@/components/cnss/Pagination";
 import { formatDateTime } from "@/lib/format";
 import { Search, FilePlus2, CheckCircle2, XCircle, LogIn, LogOut, Building2, ShieldOff } from "lucide-react";
 import type { AuditEventType } from "@/mocks/types";
@@ -14,26 +15,41 @@ const EVENT_LABEL: Record<AuditEventType, string> = {
   REQUEST_CREATED: "Création de demande",
   REQUEST_APPROVED: "Approbation",
   REQUEST_REJECTED: "Rejet",
+  BATCH_CREATED: "Lot créé",
+  BATCH_APPROVED: "Lot approuvé",
+  BATCH_REJECTED: "Lot rejeté",
+  BATCH_PARTIAL: "Lot partiel",
   LOGIN: "Connexion",
   LOGOUT: "Déconnexion",
   AGENCY_CHANGED: "Changement d'agence",
   RIGHT_CLOSED: "Fermeture de droit",
+  PROFILE_GRANTED: "Profil attribué",
+  PROFILE_SUSPENDED: "Profil suspendu",
 };
 
 const EVENT_STYLE: Record<AuditEventType, { wrap: string; icon: typeof FilePlus2 }> = {
   REQUEST_CREATED: { wrap: "bg-cnss-accent-soft text-cnss-primary border-cnss-accent/30", icon: FilePlus2 },
   REQUEST_APPROVED: { wrap: "bg-success-soft text-success border-success/20", icon: CheckCircle2 },
   REQUEST_REJECTED: { wrap: "bg-danger-soft text-danger border-danger/20", icon: XCircle },
+  BATCH_CREATED: { wrap: "bg-cnss-accent-soft text-cnss-primary border-cnss-accent/30", icon: FilePlus2 },
+  BATCH_APPROVED: { wrap: "bg-success-soft text-success border-success/20", icon: CheckCircle2 },
+  BATCH_REJECTED: { wrap: "bg-danger-soft text-danger border-danger/20", icon: XCircle },
+  BATCH_PARTIAL: { wrap: "bg-warning-soft text-warning border-warning/20", icon: ShieldOff },
   LOGIN: { wrap: "bg-muted text-muted-foreground border-border", icon: LogIn },
   LOGOUT: { wrap: "bg-muted text-muted-foreground border-border", icon: LogOut },
   AGENCY_CHANGED: { wrap: "bg-cnss-accent-soft text-cnss-primary border-cnss-accent/30", icon: Building2 },
   RIGHT_CLOSED: { wrap: "bg-warning-soft text-warning border-warning/20", icon: ShieldOff },
+  PROFILE_GRANTED: { wrap: "bg-success-soft text-success border-success/20", icon: CheckCircle2 },
+  PROFILE_SUSPENDED: { wrap: "bg-danger-soft text-danger border-danger/20", icon: ShieldOff },
 };
+
+const ITEMS_PER_PAGE = 10;
 
 export default function Audit() {
   const { events } = useDemo();
   const [type, setType] = useState<string>("ALL");
   const [query, setQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -48,6 +64,12 @@ export default function Audit() {
         );
       });
   }, [events, type, query]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedEvents = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
 
   return (
     <div className="cnss-page space-y-6">
@@ -101,7 +123,7 @@ export default function Audit() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.map((e) => {
+                {paginatedEvents.map((e) => {
                   const cfg = EVENT_STYLE[e.type];
                   const Icon = cfg.icon;
                   return (
@@ -124,6 +146,16 @@ export default function Audit() {
               </TableBody>
             </Table>
           </div>
+        )}
+        {filtered.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            totalItems={filtered.length}
+            itemsPerPage={ITEMS_PER_PAGE}
+            className="border-t border-border"
+          />
         )}
       </div>
     </div>

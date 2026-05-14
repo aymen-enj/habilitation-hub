@@ -1,17 +1,19 @@
 import type { Role } from "@/mocks/types";
 
-export type RouteKey = "dashboard" | "agents" | "requests" | "validation" | "audit";
+export type RouteKey = "dashboard" | "agents" | "consultation" | "audit" | "parameters" | "profileAssignments";
 
 export const ROUTE_ACCESS: Record<RouteKey, Role[]> = {
   dashboard: ["ADMIN", "MANAGER", "VALIDATOR", "AUDIT_VIEWER"],
   agents: ["ADMIN", "MANAGER", "VALIDATOR", "AUDIT_VIEWER"],
-  requests: ["ADMIN", "MANAGER"],
-  validation: ["ADMIN", "VALIDATOR"],
+  consultation: ["ADMIN", "MANAGER", "VALIDATOR", "AUDIT_VIEWER"],
   audit: ["ADMIN", "VALIDATOR", "AUDIT_VIEWER"],
+  parameters: ["ADMIN"],
+  profileAssignments: ["ADMIN", "MANAGER"],
 };
 
-export const canAccess = (route: RouteKey, role: Role) =>
-  ROUTE_ACCESS[route].includes(role);
+export function canAccess(route: RouteKey, role: Role) {
+  return ROUTE_ACCESS[route].includes(role);
+}
 
 export const ROLE_LABEL: Record<Role, string> = {
   ADMIN: "Administrateur",
