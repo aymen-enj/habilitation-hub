@@ -14,13 +14,22 @@ export function TopHeader() {
   if (!session) return null;
   const { user } = session;
 
+  // Lire les vraies infos de l'agent depuis localStorage (stockées après le login réel)
+  const agentInfo = JSON.parse(localStorage.getItem("cnss_agent") ?? "null");
+  const nomComplet = agentInfo
+    ? `${agentInfo.prenom ?? ""} ${agentInfo.nom ?? ""}`.trim()
+    : user.name;
+  const codeAgent = agentInfo?.codeAgent ?? user.email;
+  const poste = agentInfo?.poste ?? null;
+
   const handleLogout = () => {
+    localStorage.removeItem("cnss_agent"); // nettoyer les infos réelles
     logout();
     toast.success("Vous avez été déconnecté.");
     navigate("/login", { replace: true });
   };
 
-  const initials = user.name
+  const initials = nomComplet
     .split(" ")
     .map((p) => p[0])
     .slice(0, 2)
@@ -33,9 +42,9 @@ export function TopHeader() {
       <Separator orientation="vertical" className="h-6" />
       <div className="ml-auto flex items-center gap-3">
         <div className="hidden text-right md:block">
-          <p className="text-sm font-semibold leading-tight text-foreground">{user.name}</p>
+          <p className="text-sm font-semibold leading-tight text-foreground">{nomComplet}</p>
           <p className="text-xs text-muted-foreground">
-            {user.email} · <span className="font-medium text-cnss-primary">{ROLE_LABEL[user.role]}</span>
+            {codeAgent} · <span className="font-medium text-cnss-primary">{poste}</span>
           </p>
         </div>
         <div

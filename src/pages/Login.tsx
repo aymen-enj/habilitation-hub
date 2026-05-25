@@ -3,42 +3,61 @@ import { useNavigate } from "react-router-dom";
 import { useDemo } from "@/state/DemoState";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FormField } from "@/components/cnss/FormField";
 import { CnssLogo } from "@/components/cnss/CnssLogo";
-import { ROLE_LABEL } from "@/lib/access";
-import type { Role } from "@/mocks/types";
 import { ScrollText, Search, Settings2, Users } from "lucide-react";
 import { toast } from "sonner";
-
-const ROLES: Role[] = ["ADMIN", "MANAGER", "VALIDATOR", "AUDIT_VIEWER"];
-
-const ROLE_HINT: Record<Role, string> = {
-  ADMIN: "Accès complet à toutes les pages.",
-  MANAGER: "Tableau de bord, agents et consultation des habilitations.",
-  VALIDATOR: "Tableau de bord, agents, consultation et audit.",
-  AUDIT_VIEWER: "Lecture seule du tableau de bord, des agents, de la consultation et de l'audit.",
-};
 
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useDemo();
-  const [email, setEmail] = useState("");
+  const [identifiant, setIdentifiant] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<Role>("ADMIN");
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<{ identifiant?: string; password?: string; api?: string }>({});
 
-  const onSubmit = (e: FormEvent) => {
+  const onSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const next: typeof errors = {};
-    if (!email.trim()) next.email = "Adresse e-mail requise.";
+    if (!identifiant.trim()) next.identifiant = "Identifiant requis.";
     if (!password.trim()) next.password = "Mot de passe requis.";
     setErrors(next);
     if (Object.keys(next).length > 0) return;
 
-    login(email.trim(), role);
-    toast.success(`Connexion réussie — rôle ${ROLE_LABEL[role]} (mode démo).`);
-    navigate("/", { replace: true });
+    setLoading(true);
+    try {
+      // Appel réel au backend Spring Boot
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ login: identifiant.trim(), motPasse: password }),
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        setErrors({ api: msg || "Identifiant ou mot de passe incorrect." });
+        return;
+      }
+
+      const data = await res.json();
+
+      // Stocker les infos réelles de l'agent (nom, prenom, poste) en localStorage
+      localStorage.setItem("cnss_agent", JSON.stringify({
+        codeAgent: data.codeAgent,
+        nom: data.nom,
+        prenom: data.prenom,
+        poste: data.poste,
+      }));
+
+      // ADMIN par défaut pour la navigation (le vrai rôle viendra de la DB plus tard)
+      login(identifiant.trim(), "ADMIN");
+      toast.success(`Bienvenue, ${data.prenom ?? data.nom} !`);
+      navigate("/", { replace: true });
+    } catch {
+      setErrors({ api: "Impossible de contacter le serveur." });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -86,7 +105,7 @@ export default function Login() {
           </ul>
         </div>
         <p className="relative text-xs text-primary-foreground/60">
-          © {new Date().getFullYear()} Caisse Nationale de Sécurité Sociale — Mode démonstration.
+          © {new Date().getFullYear()} Caisse Nationale de Sécurité Sociale.
         </p>
       </aside>
 
@@ -99,19 +118,19 @@ export default function Login() {
           <div className="space-y-1.5">
             <h1 className="text-2xl font-semibold tracking-tight text-foreground">Connexion</h1>
             <p className="text-sm text-muted-foreground">
-              Entrez vos identifiants et choisissez le rôle pour cette session de démonstration.
+              Entrez votre identifiant et votre mot de passe pour accéder à la plateforme.
             </p>
           </div>
 
           <form onSubmit={onSubmit} className="space-y-5" noValidate>
-            <FormField id="email" label="Adresse e-mail" required error={errors.email}>
+            <FormField id="identifiant" label="Identifiant" required error={errors.identifiant}>
               <Input
-                id="email"
-                type="email"
-                autoComplete="email"
-                placeholder="prenom.nom@cnss.ma"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                id="identifiant"
+                type="text"
+                autoComplete="username"
+                placeholder="ex : DE050"
+                value={identifiant}
+                onChange={(e) => setIdentifiant(e.target.value)}
               />
             </FormField>
 
@@ -126,28 +145,13 @@ export default function Login() {
               />
             </FormField>
 
-            <FormField id="role" label="Rôle de la session" hint={ROLE_HINT[role]} required>
-              <Select value={role} onValueChange={(v) => setRole(v as Role)}>
-                <SelectTrigger id="role">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {ROLES.map((r) => (
-                    <SelectItem key={r} value={r}>
-                      {ROLE_LABEL[r]}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormField>
+            {errors.api && (
+              <p className="text-sm font-medium text-destructive">{errors.api}</p>
+            )}
 
-            <Button type="submit" className="w-full" size="lg">
-              Se connecter
+            <Button type="submit" className="w-full" size="lg" disabled={loading}>
+              {loading ? "Connexion en cours…" : "Se connecter"}
             </Button>
-
-            <p className="text-center text-xs text-muted-foreground">
-              Mode démonstration — toute combinaison e-mail / mot de passe non vide est acceptée.
-            </p>
           </form>
         </div>
       </section>

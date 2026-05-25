@@ -1,11 +1,19 @@
-import { useMemo } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
 import { AppWindow, ArrowRight, Layers3, Users, UserCheck } from "lucide-react";
 import { useDemo } from "@/state/DemoState";
 import { PageHeader } from "@/components/cnss/PageHeader";
 import { StatCard } from "@/components/cnss/StatCard";
 import { ROLE_LABEL, canAccess, type RouteKey } from "@/lib/access";
 import { cn } from "@/lib/utils";
+
+// Forme des données retournées par GET /api/dashboard/stats
+interface DashboardStats {
+  nbAgentsTotal: number;
+  nbAgentsActifs: number;
+  nbApplications: number;
+  nbProfils: number;
+}
 
 interface QuickAction {
   route: RouteKey;
@@ -23,34 +31,42 @@ const QUICK_ACTIONS: QuickAction[] = [
 ];
 
 export default function Dashboard() {
-  const { session, agents, applications, profiles } = useDemo();
+  const { session } = useDemo();
   const navigate = useNavigate();
   const user = session!.user;
 
-  const stats = useMemo(() => {
-    const totalAgents = agents.length;
-    const activeAgents = agents.filter((a) => a.status === "ACTIF").length;
-    const totalApplications = applications.length;
-    const totalProfiles = profiles.length;
-    return { totalAgents, activeAgents, totalApplications, totalProfiles };
-  }, [agents, applications, profiles]);
+  // Récupérer les infos réelles de l'agent stockées après le login
+  const agentInfo = JSON.parse(localStorage.getItem("cnss_agent") ?? "null");
+  const prenom = agentInfo?.prenom ?? user.name.split(" ")[0];
+  const poste  = agentInfo?.poste  ?? null;
+
+  // Appel réel vers GET /api/dashboard/stats
+  const { data: stats, isLoading } = useQuery<DashboardStats>({
+    queryKey: ["dashboard-stats"],
+    queryFn: () =>
+      fetch(`${import.meta.env.VITE_API_URL}/dashboard/stats`).then((r) => r.json()),
+  });
 
   const visibleActions = QUICK_ACTIONS.filter((a) => canAccess(a.route, user.role));
 
   return (
     <div className="cnss-page space-y-8">
       <PageHeader
-        title={`Bonjour, ${user.name.split(" ")[0]}`}
-        subtitle={`Rôle : ${ROLE_LABEL[user.role]} — Voici un aperçu de l'activité des habilitations.`}
+        title={`Bonjour, ${prenom}`}
+        subtitle={
+          poste
+            ? `Poste : ${poste} — Voici un aperçu de l'activité des habilitations.`
+            : `Rôle : ${ROLE_LABEL[user.role]} — Voici un aperçu de l'activité des habilitations.`
+        }
       />
 
       <section aria-labelledby="kpi-title" className="space-y-4">
         <h2 id="kpi-title" className="sr-only">Indicateurs clés</h2>
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-          <StatCard label="Agents totaux" value={stats.totalAgents} icon={Users} tone="default" />
-          <StatCard label="Agents actifs" value={stats.activeAgents} icon={UserCheck} tone="success" />
-          <StatCard label="Applications" value={stats.totalApplications} icon={AppWindow} tone="accent" />
-          <StatCard label="Profils" value={stats.totalProfiles} icon={Layers3} tone="warning" />
+          <StatCard label="Agents totaux"  value={isLoading ? "…" : stats?.nbAgentsTotal}   icon={Users}      tone="default" />
+          <StatCard label="Agents actifs"  value={isLoading ? "…" : stats?.nbAgentsActifs}  icon={UserCheck}  tone="success" />
+          <StatCard label="Applications"   value={isLoading ? "…" : stats?.nbApplications}  icon={AppWindow}  tone="accent"  />
+          <StatCard label="Profils"        value={isLoading ? "…" : stats?.nbProfils}        icon={Layers3}    tone="warning" />
         </div>
       </section>
 
@@ -78,29 +94,6 @@ export default function Dashboard() {
         </div>
       </section>
 
-      <section aria-labelledby="apps-title" className="space-y-3">
-        <h2 id="apps-title" className="text-lg font-semibold text-foreground">Applications couvertes</h2>
-        <div className="flex flex-wrap gap-2">
-          {[
-            { label: "RH", count: 2 },
-            { label: "Finance", count: 2 },
-            { label: "IT", count: 1 },
-          ].map((d) => (
-            <span
-              key={d.label}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-foreground shadow-sm"
-            >
-              <span className="h-2 w-2 rounded-full bg-cnss-accent" aria-hidden="true" />
-              {d.label}
-              <span className="text-xs text-muted-foreground">({d.count} apps)</span>
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <p className="text-xs text-muted-foreground">
-        Mode démonstration — les données affichées sont fictives et réinitialisées à chaque rechargement.
-      </p>
     </div>
   );
 }

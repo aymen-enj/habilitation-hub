@@ -1,9 +1,8 @@
 import { useMemo, useState } from "react";
-import { Search, Settings2 } from "lucide-react";
-import { useDemo } from "@/state/DemoState";
+import { Search } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/cnss/PageHeader";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -15,72 +14,119 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { FormField } from "@/components/cnss/FormField";
+import { formatDate } from "@/lib/format";
 
-type TabValue = "applications" | "profiles" | "modules";
+const API = import.meta.env.VITE_API_URL;
+
+// ── Types (miroir des DTOs Java) ──────────────────────────────────────────────
+
+interface ApplicationDTO {
+  code: number;
+  nom: string;
+  abreviation: string;
+}
+
+interface ProfilDTO {
+  id: number;
+  nom: string;
+  abreviation: string;
+  dateCreation: string | null;
+}
+
+interface ProcGestionDTO {
+  codeApplication: number;
+  codePge: number;
+  libelle: string;
+  abreviation: string | null;
+  type: string;
+  refProc: string | null;
+  nomPhysique: string | null;
+  extension: string | null;
+}
+
+interface AutorisationProfilDTO {
+  numProfil: number;
+  nomProfil: string;
+  codePge: number;
+  libellePge: string;
+  codeApplication: number;
+  dateDebut: string | null;
+  dateFin: string | null;
+}
+
+type TabValue = "proc-gestion" | "profils" | "autorisations";
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 export default function Parameters() {
-  const { applications, profiles, modules } = useDemo();
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string>("");
-  const [query, setQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<TabValue>("applications");
+  const [selectedAppCode, setSelectedAppCode] = useState<string>("");
+  const [query, setQuery]                     = useState("");
+  const [activeTab, setActiveTab]             = useState<TabValue>("proc-gestion");
 
+  const appCodeNum = selectedAppCode ? parseInt(selectedAppCode) : null;
   const normalizedQuery = query.trim().toLowerCase();
 
+  // ── Requêtes API ─────────────────────────────────────────────────────────────
+
+  const { data: applications = [] } = useQuery<ApplicationDTO[]>({
+    queryKey: ["parametrage-applications"],
+    queryFn: () => fetch(`${API}/parametrage/applications`).then((r) => r.json()),
+  });
+
+  const { data: procGestionList = [], isLoading: pgLoading } = useQuery<ProcGestionDTO[]>({
+    queryKey: ["parametrage-proc-gestion", appCodeNum],
+    queryFn: () => fetch(`${API}/parametrage/proc-gestion?appCode=${appCodeNum}`).then((r) => r.json()),
+    enabled: !!appCodeNum,
+  });
+
+  const { data: profils = [], isLoading: profilsLoading } = useQuery<ProfilDTO[]>({
+    queryKey: ["parametrage-profils", appCodeNum],
+    queryFn: () => fetch(`${API}/parametrage/profils?appCode=${appCodeNum}`).then((r) => r.json()),
+    enabled: !!appCodeNum,
+  });
+
+  const { data: autorisations = [], isLoading: autLoading } = useQuery<AutorisationProfilDTO[]>({
+    queryKey: ["parametrage-autorisations", appCodeNum],
+    queryFn: () => fetch(`${API}/parametrage/autorisations?appCode=${appCodeNum}`).then((r) => r.json()),
+    enabled: !!appCodeNum,
+  });
+
+  // ── Application sélectionnée ──────────────────────────────────────────────
+
   const selectedApplication = useMemo(
-    () => applications.find((app) => app.id === selectedApplicationId) ?? null,
-    [applications, selectedApplicationId],
+    () => applications.find((a) => a.code === appCodeNum) ?? null,
+    [applications, appCodeNum],
   );
 
-  const filteredProfiles = useMemo(() => {
-    if (!selectedApplicationId) return [];
-    const base = profiles.filter((profile) => profile.applicationId === selectedApplicationId);
-    if (!normalizedQuery) return base;
-    return base.filter((profile) =>
-      `${profile.code} ${profile.name} ${profile.abbreviation}`.toLowerCase().includes(normalizedQuery),
-    );
-  }, [normalizedQuery, profiles, selectedApplicationId]);
+  // ── Filtrage local par query ──────────────────────────────────────────────
 
-  const filteredModules = useMemo(() => {
-    if (!selectedApplicationId) return [];
-    const profileIds = new Set(
-      profiles
-        .filter((profile) => profile.applicationId === selectedApplicationId)
-        .map((profile) => profile.id),
+  const filteredProcGestion = useMemo(() => {
+    if (!normalizedQuery) return procGestionList;
+    return procGestionList.filter((p) =>
+      `${p.codePge} ${p.libelle} ${p.abreviation ?? ""} ${p.nomPhysique ?? ""}`.toLowerCase().includes(normalizedQuery),
     );
-    const base = modules.filter((module) => profileIds.has(module.profileId));
-    if (!normalizedQuery) return base;
-    return base.filter((module) =>
-      `${module.code} ${module.name} ${module.abbreviation} ${module.physicalName}`
-        .toLowerCase()
-        .includes(normalizedQuery),
+  }, [procGestionList, normalizedQuery]);
+
+  const filteredProfils = useMemo(() => {
+    if (!normalizedQuery) return profils;
+    return profils.filter((p) =>
+      `${p.id} ${p.nom} ${p.abreviation}`.toLowerCase().includes(normalizedQuery),
     );
-  }, [modules, normalizedQuery, profiles, selectedApplicationId]);
+  }, [profils, normalizedQuery]);
 
-  const profileById = useMemo(() => {
-    const index = new Map<string, (typeof profiles)[number]>();
-    for (const profile of profiles) index.set(profile.id, profile);
-    return index;
-  }, [profiles]);
+  const filteredAutorisations = useMemo(() => {
+    if (!normalizedQuery) return autorisations;
+    return autorisations.filter((a) =>
+      `${a.numProfil} ${a.nomProfil} ${a.libellePge}`.toLowerCase().includes(normalizedQuery),
+    );
+  }, [autorisations, normalizedQuery]);
 
-  const autorisationRows = useMemo(() => {
-    return filteredModules.map((module) => {
-      const profile = profileById.get(module.profileId);
-      return {
-        id: module.id,
-        profileCode: profile?.code ?? module.profileId,
-        profileName: profile?.name ?? module.profileId,
-        procGestion: module.code,
-        startDate: "--/--/----",
-        endDate: "--/--/----",
-        applicationCode: selectedApplication?.code ?? "-",
-      };
-    });
-  }, [filteredModules, profileById, selectedApplication]);
+  // ─────────────────────────────────────────────────────────────────────────
 
   const resetSelection = () => {
-    setSelectedApplicationId("");
+    setSelectedAppCode("");
     setQuery("");
-    setActiveTab("applications");
+    setActiveTab("proc-gestion");
   };
 
   return (
@@ -88,12 +134,6 @@ export default function Parameters() {
       <PageHeader
         title="Paramétrage des référentiels"
         subtitle="Sélectionnez d'abord l'application, puis consultez ses profils et autorisations."
-        actions={
-          <Badge variant="outline" className="gap-1.5 border-cnss-accent/40 bg-cnss-accent-soft text-cnss-primary">
-            <Settings2 className="h-3.5 w-3.5" />
-            Mode démonstration
-          </Badge>
-        }
       />
 
       <section className="cnss-card overflow-hidden">
@@ -102,14 +142,14 @@ export default function Parameters() {
 
           <div className="grid gap-4 md:grid-cols-3">
             <FormField id="application" label="Application" required>
-              <Select value={selectedApplicationId} onValueChange={setSelectedApplicationId}>
+              <Select value={selectedAppCode} onValueChange={setSelectedAppCode}>
                 <SelectTrigger id="application">
                   <SelectValue placeholder="Sélectionner une application" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent side="bottom" avoidCollisions={false} className="max-h-60 overflow-y-auto">
                   {applications.map((app) => (
-                    <SelectItem key={app.id} value={app.id}>
-                      {app.code} - {app.name}
+                    <SelectItem key={app.code} value={String(app.code)}>
+                      {app.code} - {app.nom}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -117,11 +157,11 @@ export default function Parameters() {
             </FormField>
 
             <FormField id="application-label" label="Libellé">
-              <Input id="application-label" value={selectedApplication?.name ?? ""} readOnly />
+              <Input id="application-label" value={selectedApplication?.nom ?? ""} readOnly />
             </FormField>
 
             <FormField id="application-abbreviation" label="Abréviation">
-              <Input id="application-abbreviation" value={selectedApplication?.abbreviation ?? ""} readOnly />
+              <Input id="application-abbreviation" value={selectedApplication?.abreviation ?? ""} readOnly />
             </FormField>
           </div>
 
@@ -134,7 +174,7 @@ export default function Parameters() {
                 className="pl-9"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                disabled={!selectedApplicationId}
+                disabled={!selectedAppCode}
               />
             </div>
             <Button type="button" variant="outline" onClick={resetSelection}>
@@ -144,135 +184,150 @@ export default function Parameters() {
         </div>
 
         <div className="p-4">
-          {!selectedApplicationId ? (
+          {!selectedAppCode ? (
             <div className="rounded-xl border border-dashed border-border bg-muted/20 px-6 py-12 text-center text-sm text-muted-foreground">
-              Sélectionnez d'abord une application pour afficher ses profils et autorisations.
+              Sélectionnez d'abord une application pour afficher ses procédures, profils et autorisations.
             </div>
           ) : (
-          <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as TabValue)} className="space-y-4">
-            <TabsList className="grid h-auto w-full grid-cols-3 gap-1 bg-muted/60">
-              <TabsTrigger value="applications">Proc. Gestion</TabsTrigger>
-              <TabsTrigger value="profiles">Profils</TabsTrigger>
-              <TabsTrigger value="modules">Autorisations Profil</TabsTrigger>
-            </TabsList>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as TabValue)} className="space-y-4">
+              <TabsList className="grid h-auto w-full grid-cols-3 gap-1 bg-muted/60">
+                <TabsTrigger value="proc-gestion">Proc. Gestion</TabsTrigger>
+                <TabsTrigger value="profils">Profils</TabsTrigger>
+                <TabsTrigger value="autorisations">Autorisations Profil</TabsTrigger>
+              </TabsList>
 
-            {/* Tab 1: Proc. Gestion */}
-            <TabsContent value="applications" className="space-y-3">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead className="font-semibold">Code</TableHead>
-                      <TableHead className="font-semibold">Libellé</TableHead>
-                      <TableHead className="font-semibold">Abréviation</TableHead>
-                      <TableHead className="font-semibold">Réf Proc</TableHead>
-                      <TableHead className="font-semibold">Nom Phy</TableHead>
-                      <TableHead className="font-semibold">.Ext</TableHead>
-                      <TableHead className="font-semibold">Type</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredModules.length > 0 ? (
-                      filteredModules.map((module) => {
-                        const profile = profileById.get(module.profileId);
-                        return (
-                          <TableRow key={module.id}>
-                            <TableCell className="font-mono text-xs text-foreground">{module.code}</TableCell>
-                            <TableCell className="font-medium text-foreground">{module.name}</TableCell>
-                            <TableCell className="text-xs text-foreground">{module.abbreviation}</TableCell>
-                            <TableCell className="text-xs text-muted-foreground">{profile?.code ?? "-"}</TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground">{module.physicalName}</TableCell>
-                            <TableCell className="text-xs text-foreground">{module.extension}</TableCell>
-                            <TableCell className="text-xs text-foreground">{module.type}</TableCell>
-                          </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                          Aucune ligne Proc. Gestion pour cette application
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-
-            {/* Tab 2: Profils */}
-            <TabsContent value="profiles" className="space-y-3">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead className="font-semibold">N°Profil</TableHead>
-                      <TableHead className="font-semibold">Libellé</TableHead>
-                      <TableHead className="font-semibold">Abréviation</TableHead>
-                      <TableHead className="font-semibold">D Création</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredProfiles.length > 0 ? (
-                      filteredProfiles.map((profile) => (
-                        <TableRow key={profile.id}>
-                          <TableCell className="font-mono text-xs text-foreground">{profile.code}</TableCell>
-                          <TableCell className="font-medium text-foreground">{profile.name}</TableCell>
-                          <TableCell className="text-xs text-foreground">{profile.abbreviation}</TableCell>
-                          <TableCell className="text-xs text-muted-foreground">--/--/----</TableCell>
+              {/* ── Onglet 1 : Proc. Gestion ── */}
+              <TabsContent value="proc-gestion" className="space-y-3">
+                {pgLoading ? (
+                  <p className="text-sm text-muted-foreground">Chargement…</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
+                          <TableHead className="font-semibold">Code</TableHead>
+                          <TableHead className="font-semibold">Libellé</TableHead>
+                          <TableHead className="font-semibold">Abréviation</TableHead>
+                          <TableHead className="font-semibold">Réf Proc</TableHead>
+                          <TableHead className="font-semibold">Nom Phy</TableHead>
+                          <TableHead className="font-semibold">.Ext</TableHead>
+                          <TableHead className="font-semibold">Type</TableHead>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                          Aucun profil trouvé
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-
-            {/* Tab 3: Autorisations Profil */}
-            <TabsContent value="modules" className="space-y-3">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead className="font-semibold">N°Profil</TableHead>
-                      <TableHead className="font-semibold">Lib Profil</TableHead>
-                      <TableHead className="font-semibold">Proc Gestion</TableHead>
-                      <TableHead className="font-semibold">D Début</TableHead>
-                      <TableHead className="font-semibold">D Fin</TableHead>
-                      <TableHead className="font-semibold">Application</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {autorisationRows.length > 0 ? (
-                      autorisationRows.map((row) => {
-                        return (
-                          <TableRow key={row.id}>
-                            <TableCell className="font-mono text-xs text-foreground">{row.profileCode}</TableCell>
-                            <TableCell className="font-medium text-foreground">{row.profileName}</TableCell>
-                            <TableCell className="font-mono text-xs text-muted-foreground">{row.procGestion}</TableCell>
-                            <TableCell className="text-xs text-foreground">{row.startDate}</TableCell>
-                            <TableCell className="text-xs text-foreground">{row.endDate}</TableCell>
-                            <TableCell className="text-xs text-foreground">{row.applicationCode}</TableCell>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredProcGestion.length > 0 ? (
+                          filteredProcGestion.map((p) => (
+                            <TableRow key={p.codePge}>
+                              <TableCell className="font-mono text-xs text-foreground">{p.codePge}</TableCell>
+                              <TableCell className="font-medium text-foreground">{p.libelle}</TableCell>
+                              <TableCell className="text-xs text-foreground">{p.abreviation ?? "—"}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">{p.refProc ?? "—"}</TableCell>
+                              <TableCell className="font-mono text-xs text-muted-foreground">{p.nomPhysique ?? "—"}</TableCell>
+                              <TableCell className="text-xs text-foreground">{p.extension ?? "—"}</TableCell>
+                              <TableCell className="text-xs text-foreground">{p.type}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                              Aucune proc. de gestion pour cette application
+                            </TableCell>
                           </TableRow>
-                        );
-                      })
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                          Aucune autorisation profil trouvée
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          </Tabs>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* ── Onglet 2 : Profils ── */}
+              <TabsContent value="profils" className="space-y-3">
+                {profilsLoading ? (
+                  <p className="text-sm text-muted-foreground">Chargement…</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
+                          <TableHead className="font-semibold">N°Profil</TableHead>
+                          <TableHead className="font-semibold">Libellé</TableHead>
+                          <TableHead className="font-semibold">Abréviation</TableHead>
+                          <TableHead className="font-semibold">D Création</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredProfils.length > 0 ? (
+                          filteredProfils.map((p) => (
+                            <TableRow key={p.id}>
+                              <TableCell className="font-mono text-xs text-foreground">{p.id}</TableCell>
+                              <TableCell className="font-medium text-foreground">{p.nom}</TableCell>
+                              <TableCell className="text-xs text-foreground">{p.abreviation}</TableCell>
+                              <TableCell className="text-xs text-muted-foreground">
+                                {p.dateCreation ? formatDate(p.dateCreation) : "—"}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                              Aucun profil trouvé pour cette application
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* ── Onglet 3 : Autorisations Profil ── */}
+              <TabsContent value="autorisations" className="space-y-3">
+                {autLoading ? (
+                  <p className="text-sm text-muted-foreground">Chargement…</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/40 hover:bg-muted/40">
+                          <TableHead className="font-semibold">N°Profil</TableHead>
+                          <TableHead className="font-semibold">Lib Profil</TableHead>
+                          <TableHead className="font-semibold">Proc Gestion</TableHead>
+                          <TableHead className="font-semibold">D Début</TableHead>
+                          <TableHead className="font-semibold">D Fin</TableHead>
+                          <TableHead className="font-semibold">Application</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAutorisations.length > 0 ? (
+                          filteredAutorisations.map((a, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="font-mono text-xs text-foreground">{a.numProfil}</TableCell>
+                              <TableCell className="font-medium text-foreground">{a.nomProfil}</TableCell>
+                              <TableCell className="font-mono text-xs text-muted-foreground">{a.libellePge}</TableCell>
+                              <TableCell className="text-xs text-foreground">
+                                {a.dateDebut ? formatDate(a.dateDebut) : "—"}
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground">
+                                {a.dateFin ? formatDate(a.dateFin) : (
+                                  <span className="text-xs font-medium text-success">Actif</span>
+                                )}
+                              </TableCell>
+                              <TableCell className="text-xs text-foreground">{a.codeApplication}</TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={6} className="py-8 text-center text-muted-foreground">
+                              Aucune autorisation profil pour cette application
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           )}
         </div>
       </section>
