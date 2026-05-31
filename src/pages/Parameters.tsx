@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/cnss/PageHeader";
+import { Pagination } from "@/components/cnss/Pagination";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -15,6 +16,8 @@ import {
 } from "@/components/ui/select";
 import { FormField } from "@/components/cnss/FormField";
 import { formatDate } from "@/lib/format";
+
+const PER_PAGE = 10;
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -62,6 +65,9 @@ export default function Parameters() {
   const [selectedAppCode, setSelectedAppCode] = useState<string>("");
   const [query, setQuery]                     = useState("");
   const [activeTab, setActiveTab]             = useState<TabValue>("proc-gestion");
+  const [pgPage,  setPgPage]  = useState(1);
+  const [prPage,  setPrPage]  = useState(1);
+  const [autPage, setAutPage] = useState(1);
 
   const appCodeNum = selectedAppCode ? parseInt(selectedAppCode) : null;
   const normalizedQuery = query.trim().toLowerCase();
@@ -120,6 +126,16 @@ export default function Parameters() {
       `${a.numProfil} ${a.nomProfil} ${a.libellePge}`.toLowerCase().includes(normalizedQuery),
     );
   }, [autorisations, normalizedQuery]);
+
+  // Revenir à la page 1 quand les données filtrées changent
+  useEffect(() => { setPgPage(1);  }, [filteredProcGestion]);
+  useEffect(() => { setPrPage(1);  }, [filteredProfils]);
+  useEffect(() => { setAutPage(1); }, [filteredAutorisations]);
+
+  // Données de la page courante pour chaque onglet
+  const pgPageData  = filteredProcGestion.slice((pgPage  - 1) * PER_PAGE, pgPage  * PER_PAGE);
+  const prPageData  = filteredProfils.slice(    (prPage  - 1) * PER_PAGE, prPage  * PER_PAGE);
+  const autPageData = filteredAutorisations.slice((autPage - 1) * PER_PAGE, autPage * PER_PAGE);
 
   // ─────────────────────────────────────────────────────────────────────────
 
@@ -201,42 +217,51 @@ export default function Parameters() {
                 {pgLoading ? (
                   <p className="text-sm text-muted-foreground">Chargement…</p>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="bg-muted/40 hover:bg-muted/40">
-                          <TableHead className="font-semibold">Code</TableHead>
-                          <TableHead className="font-semibold">Libellé</TableHead>
-                          <TableHead className="font-semibold">Abréviation</TableHead>
-                          <TableHead className="font-semibold">Réf Proc</TableHead>
-                          <TableHead className="font-semibold">Nom Phy</TableHead>
-                          <TableHead className="font-semibold">.Ext</TableHead>
-                          <TableHead className="font-semibold">Type</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredProcGestion.length > 0 ? (
-                          filteredProcGestion.map((p) => (
-                            <TableRow key={p.codePge}>
-                              <TableCell className="font-mono text-xs text-foreground">{p.codePge}</TableCell>
-                              <TableCell className="font-medium text-foreground">{p.libelle}</TableCell>
-                              <TableCell className="text-xs text-foreground">{p.abreviation ?? "—"}</TableCell>
-                              <TableCell className="text-xs text-muted-foreground">{p.refProc ?? "—"}</TableCell>
-                              <TableCell className="font-mono text-xs text-muted-foreground">{p.nomPhysique ?? "—"}</TableCell>
-                              <TableCell className="text-xs text-foreground">{p.extension ?? "—"}</TableCell>
-                              <TableCell className="text-xs text-foreground">{p.type}</TableCell>
-                            </TableRow>
-                          ))
-                        ) : (
-                          <TableRow>
-                            <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
-                              Aucune proc. de gestion pour cette application
-                            </TableCell>
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/40 hover:bg-muted/40">
+                            <TableHead className="font-semibold">Code</TableHead>
+                            <TableHead className="font-semibold">Libellé</TableHead>
+                            <TableHead className="font-semibold">Abréviation</TableHead>
+                            <TableHead className="font-semibold">Réf Proc</TableHead>
+                            <TableHead className="font-semibold">Nom Phy</TableHead>
+                            <TableHead className="font-semibold">.Ext</TableHead>
+                            <TableHead className="font-semibold">Type</TableHead>
                           </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                        </TableHeader>
+                        <TableBody>
+                          {pgPageData.length > 0 ? (
+                            pgPageData.map((p) => (
+                              <TableRow key={p.codePge}>
+                                <TableCell className="font-mono text-xs text-foreground">{p.codePge}</TableCell>
+                                <TableCell className="font-medium text-foreground">{p.libelle}</TableCell>
+                                <TableCell className="text-xs text-foreground">{p.abreviation ?? "—"}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{p.refProc ?? "—"}</TableCell>
+                                <TableCell className="font-mono text-xs text-muted-foreground">{p.nomPhysique ?? "—"}</TableCell>
+                                <TableCell className="text-xs text-foreground">{p.extension ?? "—"}</TableCell>
+                                <TableCell className="text-xs text-foreground">{p.type}</TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">
+                                Aucune proc. de gestion pour cette application
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                    <Pagination
+                      currentPage={pgPage}
+                      totalPages={Math.max(1, Math.ceil(filteredProcGestion.length / PER_PAGE))}
+                      totalItems={filteredProcGestion.length}
+                      itemsPerPage={PER_PAGE}
+                      onPageChange={setPgPage}
+                    />
+                  </>
                 )}
               </TabsContent>
 
@@ -256,8 +281,8 @@ export default function Parameters() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredProfils.length > 0 ? (
-                          filteredProfils.map((p) => (
+                        {prPageData.length > 0 ? (
+                          prPageData.map((p) => (
                             <TableRow key={p.id}>
                               <TableCell className="font-mono text-xs text-foreground">{p.id}</TableCell>
                               <TableCell className="font-medium text-foreground">{p.nom}</TableCell>
@@ -276,6 +301,13 @@ export default function Parameters() {
                         )}
                       </TableBody>
                     </Table>
+                    <Pagination
+                      currentPage={prPage}
+                      totalPages={Math.max(1, Math.ceil(filteredProfils.length / PER_PAGE))}
+                      totalItems={filteredProfils.length}
+                      itemsPerPage={PER_PAGE}
+                      onPageChange={setPrPage}
+                    />
                   </div>
                 )}
               </TabsContent>
@@ -298,8 +330,8 @@ export default function Parameters() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredAutorisations.length > 0 ? (
-                          filteredAutorisations.map((a, i) => (
+                        {autPageData.length > 0 ? (
+                          autPageData.map((a, i) => (
                             <TableRow key={i}>
                               <TableCell className="font-mono text-xs text-foreground">{a.numProfil}</TableCell>
                               <TableCell className="font-medium text-foreground">{a.nomProfil}</TableCell>
@@ -324,6 +356,13 @@ export default function Parameters() {
                         )}
                       </TableBody>
                     </Table>
+                    <Pagination
+                      currentPage={autPage}
+                      totalPages={Math.max(1, Math.ceil(filteredAutorisations.length / PER_PAGE))}
+                      totalItems={filteredAutorisations.length}
+                      itemsPerPage={PER_PAGE}
+                      onPageChange={setAutPage}
+                    />
                   </div>
                 )}
               </TabsContent>

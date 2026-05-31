@@ -1,75 +1,80 @@
-import { useMemo, useState } from "react";
-import { useDemo } from "@/state/DemoState";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/cnss/PageHeader";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { EmptyState } from "@/components/cnss/EmptyState";
 import { Pagination } from "@/components/cnss/Pagination";
+import { Skeleton } from "@/components/ui/skeleton";
 import { formatDateTime } from "@/lib/format";
-import { Search, FilePlus2, CheckCircle2, XCircle, LogIn, LogOut, Building2, ShieldOff } from "lucide-react";
-import type { AuditEventType } from "@/mocks/types";
+import { Search, CheckCircle2, ShieldOff, LogIn, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-const EVENT_LABEL: Record<AuditEventType, string> = {
-  REQUEST_CREATED: "Création de demande",
-  REQUEST_APPROVED: "Approbation",
-  REQUEST_REJECTED: "Rejet",
-  BATCH_CREATED: "Lot créé",
-  BATCH_APPROVED: "Lot approuvé",
-  BATCH_REJECTED: "Lot rejeté",
-  BATCH_PARTIAL: "Lot partiel",
-  LOGIN: "Connexion",
-  LOGOUT: "Déconnexion",
-  AGENCY_CHANGED: "Changement d'agence",
-  RIGHT_CLOSED: "Fermeture de droit",
-  PROFILE_GRANTED: "Profil attribué",
-  PROFILE_SUSPENDED: "Profil suspendu",
+const API = import.meta.env.VITE_API_URL;
+
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface AuditEventDTO {
+  id: number;
+  timestamp: string | null;
+  type: string;
+  acteur: string | null;
+  cible: string | null;
+  details: string | null;
+}
+
+type DbEventType = "ACCES_PROFIL_OUVERT" | "ACCES_PROFIL_FERME" | "LOGIN" | "AGENCE_CHANGEE" | "PROFIL_ATTRIBUE" | "PROFIL_SUSPENDU";
+
+const EVENT_LABEL: Record<DbEventType, string> = {
+  ACCES_PROFIL_OUVERT: "Profil ouvert (trigger)",
+  ACCES_PROFIL_FERME:  "Profil fermé",
+  LOGIN:               "Connexion",
+  AGENCE_CHANGEE:      "Changement d'agence",
+  PROFIL_ATTRIBUE:     "Profil attribué",
+  PROFIL_SUSPENDU:     "Profil suspendu",
 };
 
-const EVENT_STYLE: Record<AuditEventType, { wrap: string; icon: typeof FilePlus2 }> = {
-  REQUEST_CREATED: { wrap: "bg-cnss-accent-soft text-cnss-primary border-cnss-accent/30", icon: FilePlus2 },
-  REQUEST_APPROVED: { wrap: "bg-success-soft text-success border-success/20", icon: CheckCircle2 },
-  REQUEST_REJECTED: { wrap: "bg-danger-soft text-danger border-danger/20", icon: XCircle },
-  BATCH_CREATED: { wrap: "bg-cnss-accent-soft text-cnss-primary border-cnss-accent/30", icon: FilePlus2 },
-  BATCH_APPROVED: { wrap: "bg-success-soft text-success border-success/20", icon: CheckCircle2 },
-  BATCH_REJECTED: { wrap: "bg-danger-soft text-danger border-danger/20", icon: XCircle },
-  BATCH_PARTIAL: { wrap: "bg-warning-soft text-warning border-warning/20", icon: ShieldOff },
-  LOGIN: { wrap: "bg-muted text-muted-foreground border-border", icon: LogIn },
-  LOGOUT: { wrap: "bg-muted text-muted-foreground border-border", icon: LogOut },
-  AGENCY_CHANGED: { wrap: "bg-cnss-accent-soft text-cnss-primary border-cnss-accent/30", icon: Building2 },
-  RIGHT_CLOSED: { wrap: "bg-warning-soft text-warning border-warning/20", icon: ShieldOff },
-  PROFILE_GRANTED: { wrap: "bg-success-soft text-success border-success/20", icon: CheckCircle2 },
-  PROFILE_SUSPENDED: { wrap: "bg-danger-soft text-danger border-danger/20", icon: ShieldOff },
+const EVENT_STYLE: Record<DbEventType, { wrap: string; icon: typeof CheckCircle2 }> = {
+  ACCES_PROFIL_OUVERT: { wrap: "bg-success-soft text-success border-success/20",               icon: CheckCircle2 },
+  ACCES_PROFIL_FERME:  { wrap: "bg-warning-soft text-warning border-warning/20",               icon: ShieldOff    },
+  LOGIN:               { wrap: "bg-muted text-muted-foreground border-border",                 icon: LogIn        },
+  AGENCE_CHANGEE:      { wrap: "bg-cnss-accent-soft text-cnss-primary border-cnss-accent/30", icon: Building2    },
+  PROFIL_ATTRIBUE:     { wrap: "bg-success-soft text-success border-success/20",               icon: CheckCircle2 },
+  PROFIL_SUSPENDU:     { wrap: "bg-warning-soft text-warning border-warning/20",               icon: ShieldOff    },
 };
+
+const DEFAULT_STYLE = { wrap: "bg-muted text-muted-foreground border-border", icon: LogIn };
 
 const ITEMS_PER_PAGE = 10;
 
+// ─────────────────────────────────────────────────────────────────────────────
+
 export default function Audit() {
-  const { events } = useDemo();
-  const [type, setType] = useState<string>("ALL");
-  const [query, setQuery] = useState("");
+  const [typeFilter, setTypeFilter] = useState<string>("ALL");
+  const [query,      setQuery]      = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
+  const { data: events = [], isLoading } = useQuery<AuditEventDTO[]>({
+    queryKey: ["audit"],
+    queryFn: () => fetch(`${API}/audit`).then((r) => r.json()),
+  });
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return events
-      .filter((e) => (type === "ALL" ? true : e.type === type))
-      .filter((e) => {
-        if (!q) return true;
-        return (
-          e.actorName.toLowerCase().includes(q) ||
-          e.target.toLowerCase().includes(q) ||
-          e.details.toLowerCase().includes(q)
-        );
-      });
-  }, [events, type, query]);
+    return events.filter((e) => {
+      const matchType = typeFilter === "ALL" || e.type === typeFilter;
+      const matchQuery = !q || [e.acteur, e.cible, e.details]
+        .filter(Boolean)
+        .some((v) => v!.toLowerCase().includes(q));
+      return matchType && matchQuery;
+    });
+  }, [events, typeFilter, query]);
 
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-  const paginatedEvents = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filtered.slice(start, start + ITEMS_PER_PAGE);
-  }, [filtered, currentPage]);
+  useEffect(() => { setCurrentPage(1); }, [filtered]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const pageData   = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   return (
     <div className="cnss-page space-y-6">
@@ -90,20 +95,32 @@ export default function Audit() {
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          <Select value={type} onValueChange={setType}>
+          <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="md:w-64" aria-label="Filtrer par type d'évènement">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent side="bottom" avoidCollisions={false}>
               <SelectItem value="ALL">Tous les types d'évènement</SelectItem>
-              {(Object.keys(EVENT_LABEL) as AuditEventType[]).map((t) => (
+              {(Object.keys(EVENT_LABEL) as DbEventType[]).map((t) => (
                 <SelectItem key={t} value={t}>{EVENT_LABEL[t]}</SelectItem>
               ))}
             </SelectContent>
           </Select>
         </div>
 
-        {filtered.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-0 divide-y divide-border">
+            {Array.from({ length: 8 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-4 px-4 py-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-28 rounded-full" />
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-28" />
+                <Skeleton className="h-4 w-48" />
+              </div>
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="p-6">
             <EmptyState
               title="Aucun évènement ne correspond aux filtres"
@@ -115,31 +132,32 @@ export default function Audit() {
             <Table>
               <TableHeader>
                 <TableRow className="bg-muted/40 hover:bg-muted/40">
-                  <TableHead className="whitespace-nowrap">Horodatage</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Acteur</TableHead>
-                  <TableHead className="hidden md:table-cell">Cible</TableHead>
-                  <TableHead>Détails</TableHead>
+                  <TableHead className="whitespace-nowrap font-semibold">Horodatage</TableHead>
+                  <TableHead className="font-semibold">Type</TableHead>
+                  <TableHead className="font-semibold">Acteur</TableHead>
+                  <TableHead className="hidden font-semibold md:table-cell">Cible</TableHead>
+                  <TableHead className="font-semibold">Détails</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {paginatedEvents.map((e) => {
-                  const cfg = EVENT_STYLE[e.type];
+                {pageData.map((e) => {
+                  const cfg = EVENT_STYLE[e.type as DbEventType] ?? DEFAULT_STYLE;
                   const Icon = cfg.icon;
+                  const label = EVENT_LABEL[e.type as DbEventType] ?? e.type;
                   return (
                     <TableRow key={e.id}>
                       <TableCell className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-                        {formatDateTime(e.timestamp)}
+                        {e.timestamp ? formatDateTime(e.timestamp) : "—"}
                       </TableCell>
                       <TableCell>
                         <span className={cn("inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium", cfg.wrap)}>
                           <Icon className="h-3.5 w-3.5" aria-hidden="true" />
-                          {EVENT_LABEL[e.type]}
+                          {label}
                         </span>
                       </TableCell>
-                      <TableCell className="text-sm font-medium text-foreground">{e.actorName}</TableCell>
-                      <TableCell className="hidden font-mono text-xs text-muted-foreground md:table-cell">{e.target}</TableCell>
-                      <TableCell className="text-sm text-muted-foreground">{e.details}</TableCell>
+                      <TableCell className="text-sm font-medium text-foreground">{e.acteur ?? "—"}</TableCell>
+                      <TableCell className="hidden font-mono text-xs text-muted-foreground md:table-cell">{e.cible ?? "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{e.details ?? "—"}</TableCell>
                     </TableRow>
                   );
                 })}
@@ -147,7 +165,8 @@ export default function Audit() {
             </Table>
           </div>
         )}
-        {filtered.length > 0 && (
+
+        {!isLoading && filtered.length > 0 && (
           <Pagination
             currentPage={currentPage}
             totalPages={totalPages}

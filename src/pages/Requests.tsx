@@ -3,6 +3,7 @@ import { Calendar, Filter, RefreshCw, Search } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PageHeader } from "@/components/cnss/PageHeader";
 import { AlertBanner } from "@/components/cnss/AlertBanner";
+import { Pagination } from "@/components/cnss/Pagination";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -352,32 +353,13 @@ export default function Requests() {
               </Table>
             </div>
 
-            {totalPages > 1 && (
-              <div className="flex items-center justify-between border-t border-border px-4 py-3 text-sm text-muted-foreground">
-                <span>
-                  {(page - 1) * RESULTS_PER_PAGE + 1}–{Math.min(page * RESULTS_PER_PAGE, resultsTries.length)} sur {resultsTries.length}
-                </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    disabled={page === 1}
-                  >
-                    ‹ Précédent
-                  </Button>
-                  <span className="px-3">Page {page} / {totalPages}</span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    disabled={page === totalPages}
-                  >
-                    Suivant ›
-                  </Button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              totalItems={resultsTries.length}
+              itemsPerPage={RESULTS_PER_PAGE}
+              onPageChange={setPage}
+            />
           </div>
         )
       )}

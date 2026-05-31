@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { UserCircle2, History } from "lucide-react";
 import { useDemo } from "@/state/DemoState";
 import { PageHeader } from "@/components/cnss/PageHeader";
+import { Pagination } from "@/components/cnss/Pagination";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -24,6 +25,19 @@ import {
 import { toast } from "sonner";
 
 const API = import.meta.env.VITE_API_URL;
+
+const getLoginSaisie = (): string => {
+  try {
+    const stored = localStorage.getItem("cnss_agent");
+    if (stored) {
+      const parsed = JSON.parse(stored) as { codeAgent?: string };
+      if (parsed.codeAgent) return parsed.codeAgent;
+    }
+  } catch {
+    // ignore parse errors
+  }
+  return "SYSTEM";
+};
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -195,8 +209,14 @@ export default function Agents() {
 
   // ── Statistiques ─────────────────────────────────────────────────────────────
 
+  // Comparaison directe de chaînes ISO (safe timezone) :
+  // dateFin = "2026-05-29" (aujourd'hui) → fermé → pas actif
+  // dateFin = "2026-05-30" (demain)      → actif
+  // dateFin = null                        → ouvert illimité → actif
+  const todayStr = new Date().toISOString().slice(0, 10);
+
   const openHabs = useMemo(
-    () => habilitations.filter((h) => h.dateFin === null),
+    () => habilitations.filter((h) => h.dateFin === null || h.dateFin > todayStr),
     [habilitations],
   );
   const openProfilesCount     = new Set(openHabs.map((h) => h.nomProfil)).size;
@@ -208,7 +228,7 @@ export default function Agents() {
 
   const normalizedRightsFilter = rightsFilter.trim().toLowerCase();
   const filteredHabs = useMemo(() => {
-    let base = showClosedHabs ? habilitations : habilitations.filter((h) => h.dateFin === null);
+    let base = showClosedHabs ? habilitations : habilitations.filter((h) => h.dateFin === null || h.dateFin > todayStr);
     if (normalizedRightsFilter) {
       base = base.filter((h) => h.nomProfil.toLowerCase().includes(normalizedRightsFilter));
     }
@@ -437,7 +457,7 @@ export default function Agents() {
                 changerAgenceMutation.mutate({
                   operation,
                   agenceCible: operation !== "STOP_CURRENT_RIGHTS" ? targetDelegCode : undefined,
-                  loginSaisie: session?.user?.id ?? "SYSTEM",
+                  loginSaisie: getLoginSaisie(),
                 });
               }}
               disabled={isReadOnly || !hasSelection || changerAgenceMutation.isPending}
@@ -527,34 +547,13 @@ export default function Agents() {
                 </Table>
               </div>
 
-              {habsTotalPages > 1 && (
-                <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>
-                    {(habsPage - 1) * HABS_PER_PAGE + 1}–{Math.min(habsPage * HABS_PER_PAGE, filteredHabs.length)} sur {filteredHabs.length}
-                  </span>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setHabsPage((p) => Math.max(1, p - 1))}
-                      disabled={habsPage === 1}
-                    >
-                      ‹ Précédent
-                    </Button>
-                    <span className="px-2">
-                      Page {habsPage} / {habsTotalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setHabsPage((p) => Math.min(habsTotalPages, p + 1))}
-                      disabled={habsPage === habsTotalPages}
-                    >
-                      Suivant ›
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <Pagination
+                currentPage={habsPage}
+                totalPages={habsTotalPages}
+                totalItems={filteredHabs.length}
+                itemsPerPage={HABS_PER_PAGE}
+                onPageChange={setHabsPage}
+              />
               </>
             )}
           </TabsContent>
